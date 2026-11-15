@@ -20,6 +20,20 @@
       "recs": [
         { "t": "Add your folders to <b>scanDirs</b> in config.json", "p": "TIP" },
         { "t": "Tag commits like <b>[area]</b> or <b>feat:</b> for Work Distribution", "p": "TIP" }
+      ],
+      "phases": [
+        { "n": "Planning", "v": 100 },
+        { "n": "Design", "v": 100 },
+        { "n": "Backend", "v": 60 },
+        { "n": "Frontend", "v": 45 },
+        { "n": "Testing", "v": 20 },
+        { "n": "Launch", "v": 10 }
+      ],
+      "features": [
+        { "n": "Auth", "s": "done" }, { "n": "Dashboard", "s": "done" }, { "n": "Settings", "s": "wip" },
+        { "n": "Billing", "s": "todo" }, { "n": "Search", "s": "done" }, { "n": "Notifications", "s": "wip" },
+        { "n": "Profile", "s": "done" }, { "n": "Admin", "s": "todo" }, { "n": "Export", "s": "todo" },
+        { "n": "API", "s": "wip" }, { "n": "Mobile", "s": "todo" }, { "n": "Docs", "s": "todo" }
       ]
     },
     { "name": "api-service", "tagline": "DEVHUD · DEMO", "repo": "" },

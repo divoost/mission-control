@@ -22,11 +22,32 @@ def load_config():
 
 CFG = load_config()
 PORT = int(CFG.get("port") or 8799)
-DEFAULT_SCAN = ["~/Desktop", "~/Documents", "~/Projects", "~/projects", "~/dev", "~/code", "~/src", "~"]
+DEFAULT_SCAN = ["~", "~/Desktop", "~/Documents", "~/Downloads", "~/workspace",
+                "~/Projects", "~/projects", "~/dev", "~/code", "~/src", "~/repos", "~/git"]
+SCAN_DEPTH = int(CFG.get("scanDepth") or 3)
+EXCLUDE = {"node_modules", "Library", ".Trash", "vendor", "__pycache__", ".cache",
+           ".codex", ".npm", ".cargo", "Pods", "DerivedData", "dist", "build", ".next"}
 
 
 def expand(p):
     return os.path.abspath(os.path.expanduser(p or ""))
+
+
+def find_repos(base, maxdepth=SCAN_DEPTH):
+    base = expand(base)
+    if not os.path.isdir(base):
+        return []
+    res, base_sep = [], base.rstrip(os.sep).count(os.sep)
+    for root, dirs, _ in os.walk(base):
+        depth = root.count(os.sep) - base_sep
+        dirs[:] = [d for d in dirs if d not in EXCLUDE and not d.startswith(".")]
+        if os.path.isdir(os.path.join(root, ".git")):
+            res.append(root)        # keep descending: find nested project repos too
+        if depth >= maxdepth:
+            dirs[:] = []
+        if len(res) >= 120:
+            break
+    return res
 
 
 def sh(repo, args, timeout=25):
@@ -57,22 +78,16 @@ def discover_projects():
         item["configured"] = True
         projs.append(item)
     scan = CFG.get("scanDirs", DEFAULT_SCAN)
+    found = []
     for d in scan:
-        dd = expand(d)
-        if not os.path.isdir(dd):
+        found.extend(find_repos(d))
+    for repo in sorted(set(found), key=lambda r: os.path.basename(r).lower()):
+        if repo in seen:
             continue
-        try:
-            for name in sorted(os.listdir(dd)):
-                sub = os.path.join(dd, name)
-                if name.startswith(".") or not os.path.isdir(sub):
-                    continue
-                if os.path.isdir(os.path.join(sub, ".git")) and sub not in seen:
-                    seen.add(sub)
-                    projs.append({"repo": sub, "name": name, "branch": "", "configured": False})
-                if len(projs) >= 60:
-                    break
-        except Exception:
-            pass
+        seen.add(repo)
+        projs.append({"repo": repo, "name": os.path.basename(repo), "branch": "", "configured": False})
+        if len(projs) >= 80:
+            break
     return projs
 
 
@@ -142,6 +157,10 @@ def build_status(proj):
     files = [x for x in sh(repo, ["git", "ls-files"]).splitlines() if x]
     pages = len([x for x in files if x.lower().endswith((".html", ".htm", ".tsx", ".jsx", ".vue", ".svelte"))])
     last = sh(repo, ["git", "log", "-1", "--format=%cr", ref]) or "-"
+    dbt = int(sh(repo, ["bash", "-lc",
+        "{ git ls-files -z '*.sql' | xargs -0 cat 2>/dev/null | grep -ciE '^[[:space:]]*create table'; "
+        "git ls-files -z '*.prisma' | xargs -0 cat 2>/dev/null | grep -ciE '^[[:space:]]*model '; } "
+        "| awk '{s+=$1}END{print s+0}'"]) or 0)
 
     raw = sh(repo, ["git", "log", ref, "--since=14.days", "--date=format:%Y-%m-%d", "--pretty=%cd"])
     cnt = collections.Counter(raw.splitlines())
@@ -162,8 +181,8 @@ def build_status(proj):
     branches = [{"n": x.split("|", 1)[0], "ago": (x.split("|", 1)[1] if "|" in x else "")} for x in braw.splitlines() if x]
 
     gh = [["Total commits", total_commits], ["Branches", str(branches_n)], ["Contributors", str(contrib)],
-          ["Pages/views", str(pages)], ["Tracked files", str(len(files))], ["TODO / FIXME", str(todo)],
-          ["Last activity", last]]
+          ["Pages/views", str(pages)], ["DB tables", str(dbt)], ["Tracked files", str(len(files))],
+          ["TODO / FIXME", str(todo)], ["Last activity", last]]
 
     return {
         "project": proj.get("name"), "tagline": proj.get("tagline") or CFG.get("tagline", "MISSION CONTROL"),
@@ -173,12 +192,18 @@ def build_status(proj):
         "total": total, "done": done, "milestones": ms, "commits": commits, "gh": gh,
         "timeline": timeline, "areas": area_list, "todo": int(todo or 0), "branches": branches,
         "recs": proj.get("recs", CFG.get("recs", [])), "pages": pages, "files": len(files),
+        "dbt": dbt, "phases": proj.get("phases", []), "features": proj.get("features", []),
     }
 
 
 def projects_list():
-    return {"projects": [{"id": p["repo"], "name": p["name"], "branch": p.get("branch") or "",
-                          "configured": p.get("configured", False)} for p in PROJECTS]}
+    items, tot = [], 0
+    for p in PROJECTS:
+        c = int(sh(p["repo"], ["git", "rev-list", "--count", "HEAD"], timeout=8) or 0)
+        tot += c
+        items.append({"id": p["repo"], "name": p["name"], "branch": p.get("branch") or "",
+                      "configured": p.get("configured", False), "commits": c})
+    return {"projects": items, "totals": {"projects": len(items), "commits": tot}}
 
 
 class H(BaseHTTPRequestHandler):
