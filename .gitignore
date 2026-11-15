@@ -1,0 +1,8 @@
+# Private, machine-local config (points at your repo, never published)
+config.json
+
+# Python / OS
+__pycache__/
+*.pyc
+.DS_Store
+.mc-*-chrome/
