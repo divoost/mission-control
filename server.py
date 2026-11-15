@@ -65,13 +65,18 @@ def ok(repo, args):
         return False
 
 
+def pid_of(p):
+    return p["repo"] + ("#" + p["subpath"] if p.get("subpath") else "")
+
+
 def discover_projects():
     projs, seen = [], set()
     for p in CFG.get("projects", []):
         repo = expand(p.get("repo") or HERE)
-        if repo in seen:
+        key = (repo, p.get("subpath") or "")
+        if key in seen:
             continue
-        seen.add(repo)
+        seen.add(key)
         item = dict(p)
         item["repo"] = repo
         item["name"] = p.get("name") or os.path.basename(repo)
@@ -82,9 +87,9 @@ def discover_projects():
     for d in scan:
         found.extend(find_repos(d))
     for repo in sorted(set(found), key=lambda r: os.path.basename(r).lower()):
-        if repo in seen:
+        if (repo, "") in seen:
             continue
-        seen.add(repo)
+        seen.add((repo, ""))
         projs.append({"repo": repo, "name": os.path.basename(repo), "branch": "", "configured": False})
         if len(projs) >= 80:
             break
@@ -98,7 +103,10 @@ def find_project(pid):
     if not pid:
         return PROJECTS[0] if PROJECTS else None
     for p in PROJECTS:
-        if p["repo"] == pid or p["name"] == pid:
+        if pid_of(p) == pid or p["name"] == pid:
+            return p
+    for p in PROJECTS:
+        if p["repo"] == pid:
             return p
     return PROJECTS[0] if PROJECTS else None
 
@@ -133,8 +141,18 @@ def milestones(repo, ref, defs):
     return out, done
 
 
+def _read(repo, path):
+    try:
+        with open(os.path.join(repo, path), encoding="utf-8", errors="ignore") as fh:
+            return fh.read()
+    except Exception:
+        return ""
+
+
 def build_status(proj):
     repo = proj["repo"]
+    sub = proj.get("subpath")
+    ps = (["--", sub] if sub else [])      # path scope for monorepo sub-apps
     area_re = proj.get("areaRegex") or CFG.get("areaRegex") or r"\[([^\]]+)\]|^([a-z]+)(?:\(|:)"
     ref = resolve_ref(proj)
     ms, done = milestones(repo, ref, proj.get("milestones", []))
@@ -144,32 +162,35 @@ def build_status(proj):
         m = re.search(area_re, subject)
         return ((m.group(1) or m.group(2) or "").strip() or None) if m else None
 
-    clog = sh(repo, ["git", "log", ref, "--date-order", "--pretty=format:%h|%cr|%s", "-14"])
+    clog = sh(repo, ["git", "log", ref, "--date-order", "--pretty=format:%h|%cr|%s", "-14"] + ps)
     commits = []
     for l in clog.splitlines():
         if "|" in l:
             sha, ago, msg = l.split("|", 2)
             commits.append({"sha": sha, "ago": ago, "msg": msg, "area": area_of(msg)})
 
-    total_commits = sh(repo, ["git", "rev-list", "--count", ref]) or "0"
+    total_commits = sh(repo, ["git", "rev-list", "--count", ref] + ps) or "0"
     branches_n = len([b for b in sh(repo, ["git", "branch"]).splitlines() if b.strip()])
-    contrib = len(set(x for x in sh(repo, ["git", "log", ref, "--format=%an"]).splitlines() if x))
-    files = [x for x in sh(repo, ["git", "ls-files"]).splitlines() if x]
+    contrib = len(set(x for x in sh(repo, ["git", "log", ref, "--format=%an"] + ps).splitlines() if x))
+    files = [x for x in sh(repo, ["git", "ls-files"] + ps).splitlines() if x]
     pages = len([x for x in files if x.lower().endswith((".html", ".htm", ".tsx", ".jsx", ".vue", ".svelte"))])
-    last = sh(repo, ["git", "log", "-1", "--format=%cr", ref]) or "-"
-    dbt = int(sh(repo, ["bash", "-lc",
-        "{ git ls-files -z '*.sql' | xargs -0 cat 2>/dev/null | grep -ciE '^[[:space:]]*create table'; "
-        "git ls-files -z '*.prisma' | xargs -0 cat 2>/dev/null | grep -ciE '^[[:space:]]*model '; } "
-        "| awk '{s+=$1}END{print s+0}'"]) or 0)
+    last = sh(repo, ["git", "log", "-1", "--format=%cr", ref] + ps) or "-"
+    dbt = 0
+    for f in files:
+        fl = f.lower()
+        if fl.endswith(".sql"):
+            dbt += len(re.findall(r"(?im)^\s*create\s+table", _read(repo, f)))
+        elif fl.endswith(".prisma"):
+            dbt += len(re.findall(r"(?im)^\s*model\s", _read(repo, f)))
 
-    raw = sh(repo, ["git", "log", ref, "--since=14.days", "--date=format:%Y-%m-%d", "--pretty=%cd"])
+    raw = sh(repo, ["git", "log", ref, "--since=14.days", "--date=format:%Y-%m-%d", "--pretty=%cd"] + ps)
     cnt = collections.Counter(raw.splitlines())
     today = datetime.date.today()
     timeline = [{"d": (today - datetime.timedelta(days=i)).strftime("%m/%d"),
                  "v": cnt.get((today - datetime.timedelta(days=i)).strftime("%Y-%m-%d"), 0)} for i in range(13, -1, -1)]
 
     areas = collections.Counter()
-    for s in sh(repo, ["git", "log", ref, "--pretty=%s", "-150"]).splitlines():
+    for s in sh(repo, ["git", "log", ref, "--pretty=%s", "-150"] + ps).splitlines():
         a = area_of(s)
         if a:
             areas[a] += 1
@@ -199,9 +220,10 @@ def build_status(proj):
 def projects_list():
     items, tot = [], 0
     for p in PROJECTS:
-        c = int(sh(p["repo"], ["git", "rev-list", "--count", "HEAD"], timeout=8) or 0)
+        psub = (["--", p["subpath"]] if p.get("subpath") else [])
+        c = int(sh(p["repo"], ["git", "rev-list", "--count", "HEAD"] + psub, timeout=8) or 0)
         tot += c
-        items.append({"id": p["repo"], "name": p["name"], "branch": p.get("branch") or "",
+        items.append({"id": pid_of(p), "name": p["name"], "branch": p.get("branch") or "",
                       "configured": p.get("configured", False), "commits": c})
     return {"projects": items, "totals": {"projects": len(items), "commits": tot}}
 

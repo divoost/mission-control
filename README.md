@@ -40,6 +40,7 @@ Open **http://127.0.0.1:8799** → done. (Requires `git` + Python 3.8+.)
 |---|---|
 | `project` / `tagline` | Header text |
 | `repo` | Absolute path to the git repo to watch (empty = this repo) |
+| `subpath` | Monorepo support: scope a project to a subfolder (e.g. `apps/web`). All metrics are filtered to that path, so one repo can appear as several projects |
 | `branch` | Branch/ref to read (empty = current `HEAD`); set `"fetch": true` to pull it first |
 | `theme` | `cyan` · `amber` · `matrix` · `magenta` |
 | `port` | Local port (default `8799`) |
