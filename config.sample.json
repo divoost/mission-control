@@ -1,28 +1,28 @@
 {
-  "project": "Mission Control",
-  "tagline": "DEVHUD · SAMPLE",
-  "repo": "",
-  "branch": "",
   "theme": "cyan",
   "port": 8799,
+  "_comment_scanDirs": "Folders to auto-discover git repos in — each repo appears in the left rail. Example: [\"~/Desktop\", \"~\", \"~/projects\"]. Left empty here so the demo only shows the projects below.",
+  "scanDirs": [],
   "areaRegex": "\\[([^\\]]+)\\]|^([a-z]+)(?:\\(|:)",
-  "milestones": [
-    { "name": "Scaffold project", "done": true },
-    { "name": "Config-driven server", "done": true },
-    { "name": "HUD dashboard", "done": true },
-    { "name": "Timeline & area panels", "done": true },
-    { "name": "Theme support", "done": true },
-    { "name": "Public release", "done": false }
-  ],
-  "panels": {
-    "timeline": true,
-    "areas": true,
-    "todos": true,
-    "branches": true,
-    "radar": true,
-    "log": true,
-    "recs": false,
-    "milestones": true
-  },
-  "recs": []
+  "projects": [
+    {
+      "name": "web-app",
+      "tagline": "DEVHUD · DEMO",
+      "repo": "",
+      "milestones": [
+        { "name": "Scaffold project", "done": true },
+        { "name": "Config-driven server", "done": true },
+        { "name": "HUD dashboard", "done": true },
+        { "name": "Multi-repo selector", "done": true },
+        { "name": "Timeline & area panels", "done": true },
+        { "name": "Public release", "done": false }
+      ],
+      "recs": [
+        { "t": "Add your folders to <b>scanDirs</b> in config.json", "p": "TIP" },
+        { "t": "Tag commits like <b>[area]</b> or <b>feat:</b> for Work Distribution", "p": "TIP" }
+      ]
+    },
+    { "name": "api-service", "tagline": "DEVHUD · DEMO", "repo": "" },
+    { "name": "mobile-client", "tagline": "DEVHUD · DEMO", "repo": "" }
+  ]
 }
