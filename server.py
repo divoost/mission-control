@@ -214,6 +214,7 @@ def build_status(proj):
         "timeline": timeline, "areas": area_list, "todo": int(todo or 0), "branches": branches,
         "recs": proj.get("recs", CFG.get("recs", [])), "pages": pages, "files": len(files),
         "dbt": dbt, "phases": proj.get("phases", []), "features": proj.get("features", []),
+        "agents": proj.get("agents", []),
     }
 
 
