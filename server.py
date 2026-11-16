@@ -594,6 +594,12 @@ class H(BaseHTTPRequestHandler):
         def ok_json(d):
             return self._send(200, json.dumps(d, ensure_ascii=False), "application/json; charset=utf-8")
 
+        def _int(v):
+            try:
+                return max(0, int(v or 0))
+            except Exception:
+                return 0
+
         def clean(it):
             name = (it.get("name") or "").strip()
             st = it.get("status") if it.get("status") in STATUSES else "active"
@@ -608,6 +614,10 @@ class H(BaseHTTPRequestHandler):
                 "progress": pr,
                 "updated": (it.get("updated") or "").strip(),
                 "tag": (it.get("tag") or "").strip(),
+                "task": (it.get("task") or "").strip(),      # current work in progress
+                "eta": (it.get("eta") or "").strip(),        # expected completion
+                "convos": _int(it.get("convos")),            # number of conversations
+                "docs": _int(it.get("docs")),                # attached documents
             }
 
         if u.path == "/api/add-project":
