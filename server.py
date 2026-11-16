@@ -201,6 +201,38 @@ def build_status(proj):
                      "--format=%(refname:short)|%(committerdate:relative)", "--count=7"])
     branches = [{"n": x.split("|", 1)[0], "ago": (x.split("|", 1)[1] if "|" in x else "")} for x in braw.splitlines() if x]
 
+    # code composition (file-type breakdown)
+    extc = collections.Counter(os.path.splitext(f)[1].lower().lstrip(".") or "other" for f in files)
+    langs = [{"n": k, "v": v} for k, v in extc.most_common(8)]
+    # module structure (top-level dirs relative to subpath)
+    basep = (sub.rstrip("/") + "/") if sub else ""
+    dirc = collections.Counter()
+    for f in files:
+        rel = f[len(basep):] if basep and f.startswith(basep) else f
+        dirc[rel.split("/")[0] if "/" in rel else "(root)"] += 1
+    dirs = [{"n": k, "v": v} for k, v in dirc.most_common(8)]
+    # contributors (top committers)
+    cc = collections.Counter(x for x in sh(repo, ["git", "log", ref, "--format=%an"] + ps).splitlines() if x)
+    contributors = [{"n": k, "v": v} for k, v in cc.most_common(6)]
+    # tech stack detection
+    deps = "".join(_read(repo, p).lower() for p in files if p.endswith("package.json"))
+    fl = " ".join(files).lower()
+    stack = []
+    def _add(label, cond):
+        if cond and label not in stack:
+            stack.append(label)
+    _add("Next.js", "next.config" in fl or '"next"' in deps)
+    _add("React", '"react"' in deps or ".tsx" in fl or ".jsx" in fl)
+    _add("Vue", '"vue"' in deps or ".vue" in fl)
+    _add("Svelte", '"svelte"' in deps or ".svelte" in fl)
+    _add("TypeScript", ".ts" in fl or ".tsx" in fl or "tsconfig.json" in fl)
+    _add("JavaScript", ".js" in fl or ".jsx" in fl)
+    _add("Tailwind", "tailwind.config" in fl or "tailwindcss" in deps)
+    _add("Prisma", ".prisma" in fl)
+    _add("Supabase", "supabase" in fl or "@supabase" in deps)
+    _add("Python", ".py" in fl)
+    _add("SQL", ".sql" in fl)
+
     gh = [["Total commits", total_commits], ["Branches", str(branches_n)], ["Contributors", str(contrib)],
           ["Pages/views", str(pages)], ["DB tables", str(dbt)], ["Tracked files", str(len(files))],
           ["TODO / FIXME", str(todo)], ["Last activity", last]]
@@ -214,7 +246,8 @@ def build_status(proj):
         "timeline": timeline, "areas": area_list, "todo": int(todo or 0), "branches": branches,
         "recs": proj.get("recs", CFG.get("recs", [])), "pages": pages, "files": len(files),
         "dbt": dbt, "phases": proj.get("phases", []), "features": proj.get("features", []),
-        "agents": proj.get("agents", []),
+        "agents": proj.get("agents", []), "langs": langs, "dirs": dirs,
+        "contributors": contributors, "stack": stack,
     }
 
 
