@@ -541,7 +541,7 @@ def overview():
 
 # ---- real Claude Code usage (local session logs, token counts) ----
 import glob as _glob
-CLAUDE_PROJECTS = os.path.expanduser("~/.claude/projects")
+CLAUDE_PROJECTS = os.path.expanduser(os.environ.get("MC_CLAUDE_PROJECTS") or CFG.get("claudeProjectsDir") or "~/.claude/projects")
 _usage_cache = {}   # filepath -> (mtime, {in,out,cache,msgs,last})
 
 
