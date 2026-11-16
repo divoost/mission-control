@@ -184,6 +184,23 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .bpc-meta .bpc-eta{font-size:11px;font-family:'Share Tech Mono';color:var(--teal);border:1px solid rgba(43,255,176,.35);background:rgba(43,255,176,.06);padding:2px 7px;border-radius:3px}
 .bpc-meta .bpc-chip{font-size:11px;font-family:'Share Tech Mono';color:var(--mut);border:1px solid var(--line);padding:2px 7px;border-radius:3px}
 .bpc-add{margin-top:8px;font-size:11px;color:var(--mut2);font-family:'Share Tech Mono';opacity:.6}
+/* board controls: filter chips + sort */
+.bpctrl{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 14px;flex-wrap:wrap}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-family:'Share Tech Mono';font-size:12px;color:var(--mut);background:rgba(8,22,38,.5);border:1px solid var(--line);padding:6px 13px;border-radius:14px;cursor:pointer;transition:.12s}
+.chip:hover{color:var(--cy);border-color:var(--line2)}.chip.on{color:var(--bg);background:var(--cy);border-color:var(--cy);box-shadow:0 0 12px rgba(120,200,255,.35)}
+.bpsort{width:auto;min-width:110px}
+/* collapsed hold list */
+.heldhd{font-family:'Share Tech Mono';font-size:13px;color:var(--mut);cursor:pointer;padding:9px 2px;border-top:1px solid rgba(120,200,255,.1);margin-top:4px;user-select:none}
+.heldhd:hover{color:var(--cy)}.heldhd::first-letter{color:var(--cy)}.heldhd.open{color:var(--ink)}
+.heldlist{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.bprow{display:flex;align-items:center;gap:11px;padding:8px 11px;border:1px solid var(--line);border-radius:5px;background:rgba(8,22,38,.38);cursor:pointer;transition:.12s}
+.bprow:hover{border-color:var(--line2);background:rgba(103,247,255,.05)}
+.bprow .bpc-st{flex:0 0 auto}.bprow .brn{flex:1;min-width:0;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bprow .brbar{flex:0 0 90px;height:6px;background:rgba(120,200,255,.08);border-radius:2px;overflow:hidden}.bprow .brbar i{display:block;height:100%;background:linear-gradient(90deg,var(--cy2),var(--cy))}
+.bprow .brp{flex:0 0 auto;font-family:'Share Tech Mono';font-size:13px;color:var(--cy);width:40px;text-align:right}
+.bprow .bru{flex:0 0 auto;font-family:'Share Tech Mono';font-size:11px;color:var(--mut2);width:66px;text-align:right}
+.bprow .bpc-ed{opacity:0}.bprow:hover .bpc-ed{opacity:.6}
 .bpc-pg small{font-size:11px;color:var(--mut)}.bpc-pg em{font-style:normal;font-size:10px;color:var(--mut2);margin-left:3px;letter-spacing:.04em}
 .ovsub .ovlive{font-family:'Share Tech Mono';font-size:11px;color:var(--teal);letter-spacing:.12em;animation:bl 1.3s infinite;flex:0 0 auto}
 .ovsub2{margin-top:8px}
@@ -337,7 +354,9 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
       <!-- SECTION 3 · My Projects / Claude.ai (magenta) -->
       <section class="ovsec mp">
         <div class="ovband"><span class="bdot"></span><b data-t="ov_board">내 프로젝트</b><span class="realbadge man" data-t="bp_manual">직접 기록</span><span class="bpcount" id="bpcount"></span><span class="ln"></span></div>
+        <div class="bpctrl" id="bpctrl"></div>
         <div class="bpgrid" id="bpgrid"></div>
+        <div id="bpheld"></div>
       </section>
     </div>
     <div id="single">
@@ -412,7 +431,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 const THEMES={cyan:['#67f7ff','#20c4e8','#8ea2ff'],amber:['#ffcf5a','#e0952a','#ffd98a'],matrix:['#53ff9b','#17b85f','#9affc6'],magenta:['#ff79d0','#d13a92','#ffabe0']};
 const TORDER=['cyan','amber','matrix','magenta'];let curTheme='cyan';
 const PAL=['#53ff9b','#67f7ff','#ffd24a','#ff79d0','#8ea2ff','#ff6d86','#20c4e8','#ffcf5a'];
-const T={en:{projects:'Projects',repos:'Repos',commits:'Commits',theme:'Theme',refresh:'Refresh',t_milestones:'Milestones',t_phases:'Phases',t_features:'Feature Status',t_commits:'Recent Commits',t_log:'Event Log',t_radar:'Commit Radar',t_activity:'Commit Activity · 14d',t_work:'Work Distribution',t_branches:'Branches',t_recs:'Recommended',t_inprog:'In Progress',t_agents:'AI Agents',t_code:'Code Composition',t_modules:'Module Structure',t_contrib:'Contributors',t_stack:'Tech Stack',t_screens:'UI · Screens',t_docs:'Planning · Docs',overview:'Overview',ov_managed:'Managed Projects',ov_other:'Other Repos',ov_projects:'Projects',ov_commits:'Total Commits',ov_progress:'Avg Progress',ov_feat:'Features',ov_agents:'Active Agents',ms_short:'milestones',wip_short:'in progress',last_short:'last',done_k:'Done',wip_k:'Active',todo_k:'Todo',ov_board:'My Projects',ov_managed2:'Git projects (auto)',newproj:'New project',m_name:'Name',m_desc:'One-line description',m_status:'Status',m_progress:'Progress %',m_updated:'Last activity',m_cancel:'Cancel',m_save:'Save',bp_empty:'No projects yet',st_idea:'Idea',st_active:'Active',st_done:'Done',st_hold:'Hold',ov_cc:'CLAUDE CODE · DEV STATUS',bp_recent:'7d',bp_act:'avg activity',bp_prog:'progress',bp_actlbl:'activity',cp_prog:'Overall progress',cp_metrics:'Dev metrics',cp_now:'In progress now',m_db:'DB tables',m_c7:'7-day commits',m_wip:'In progress',m_ag:'AI agents',bp_now:'Now',bp_detail:'add detail',m_task:'Current task',m_eta:'Expected completion',m_convos:'Conversations',m_docs:'Attached docs',cu_title:'Claude Code · Real token usage',cu_real:'REAL · LOCAL',cu_out:'Output tokens',cu_in:'Input',cu_cache:'Cache',cu_sess:'Sessions',cu_sessw:'sessions',bp_manual:'self-tracked',au_title:'Anthropic API · Tokens · Cost',au_real:'REAL · API',au_off:'NOT SET',au_setup:'Connect your Anthropic usage',au_s1:'Create an Admin API key in the Anthropic Console',au_s2:'Add it to',au_s3:'Refresh — real tokens & cost appear',au_safe:'Key stays local (git-ignored), never committed or shown.',au_cost:'Cost (7d)',au_7d:'Last 7 days'},ko:{projects:'프로젝트',repos:'리포',commits:'커밋',theme:'테마',refresh:'갱신',t_milestones:'마일스톤',t_phases:'단계(Phase)',t_features:'기능별 상태',t_commits:'최근 커밋',t_log:'이벤트 로그',t_radar:'커밋 레이더',t_activity:'커밋 활동 · 14일',t_work:'작업 분포',t_branches:'브랜치',t_recs:'추천 액션',t_inprog:'진행 중',t_agents:'AI 에이전트',t_code:'코드 구성',t_modules:'모듈 구성',t_contrib:'기여자',t_stack:'기술 스택',t_screens:'UI · 화면',t_docs:'기획 · 문서',overview:'종합',ov_managed:'관리 중인 프로젝트',ov_other:'기타 리포',ov_projects:'프로젝트',ov_commits:'총 커밋',ov_progress:'평균 진행률',ov_feat:'기능 현황',ov_agents:'가동 에이전트',ms_short:'마일스톤',wip_short:'진행중',last_short:'최근',done_k:'완료',wip_k:'진행',todo_k:'대기',ov_board:'내 프로젝트',ov_managed2:'GIT 프로젝트 (자동 감지)',newproj:'새 프로젝트',m_name:'이름',m_desc:'한 줄 설명',m_status:'상태',m_progress:'진척도 %',m_updated:'최근 활동',m_cancel:'취소',m_save:'저장',bp_empty:'프로젝트가 없습니다',st_idea:'기획',st_active:'진행',st_done:'완료',st_hold:'보류',ov_cc:'CLAUDE CODE · 개발 현황',bp_recent:'최근7일',bp_act:'평균 활동',bp_prog:'진척',bp_actlbl:'활동',cp_prog:'전체 진행률',cp_metrics:'개발 지표',cp_now:'지금 진행중',m_db:'DB 테이블',m_c7:'7일 커밋',m_wip:'진행중 기능',m_ag:'AI 에이전트',bp_now:'현재',bp_detail:'상세 추가',m_task:'현재 작업',m_eta:'예상 완료',m_convos:'대화 수',m_docs:'첨부 문서',cu_title:'Claude Code · 실측 토큰 사용량',cu_real:'실측 · 로컬',cu_out:'출력 토큰',cu_in:'입력',cu_cache:'캐시',cu_sess:'세션',cu_sessw:'세션',bp_manual:'직접 기록',au_title:'Anthropic API · 토큰 · 비용',au_real:'실측 · API',au_off:'미설정',au_setup:'Anthropic 사용량 연결',au_s1:'Anthropic 콘솔에서 Admin API 키 생성',au_s2:'키를 넣기:',au_s3:'갱신하면 실제 토큰·비용 표시',au_safe:'키는 로컬(gitignore)에만 저장 · 커밋/노출 안 함',au_cost:'비용(7일)',au_7d:'최근 7일'},
+const T={en:{projects:'Projects',repos:'Repos',commits:'Commits',theme:'Theme',refresh:'Refresh',t_milestones:'Milestones',t_phases:'Phases',t_features:'Feature Status',t_commits:'Recent Commits',t_log:'Event Log',t_radar:'Commit Radar',t_activity:'Commit Activity · 14d',t_work:'Work Distribution',t_branches:'Branches',t_recs:'Recommended',t_inprog:'In Progress',t_agents:'AI Agents',t_code:'Code Composition',t_modules:'Module Structure',t_contrib:'Contributors',t_stack:'Tech Stack',t_screens:'UI · Screens',t_docs:'Planning · Docs',overview:'Overview',ov_managed:'Managed Projects',ov_other:'Other Repos',ov_projects:'Projects',ov_commits:'Total Commits',ov_progress:'Avg Progress',ov_feat:'Features',ov_agents:'Active Agents',ms_short:'milestones',wip_short:'in progress',last_short:'last',done_k:'Done',wip_k:'Active',todo_k:'Todo',ov_board:'My Projects',ov_managed2:'Git projects (auto)',newproj:'New project',m_name:'Name',m_desc:'One-line description',m_status:'Status',m_progress:'Progress %',m_updated:'Last activity',m_cancel:'Cancel',m_save:'Save',bp_empty:'No projects yet',st_idea:'Idea',st_active:'Active',st_done:'Done',st_hold:'Hold',ov_cc:'CLAUDE CODE · DEV STATUS',bp_recent:'7d',bp_act:'avg activity',bp_prog:'progress',bp_actlbl:'activity',cp_prog:'Overall progress',cp_metrics:'Dev metrics',cp_now:'In progress now',m_db:'DB tables',m_c7:'7-day commits',m_wip:'In progress',m_ag:'AI agents',bp_now:'Now',bp_detail:'add detail',m_task:'Current task',m_eta:'Expected completion',m_convos:'Conversations',m_docs:'Attached docs',cu_title:'Claude Code · Real token usage',cu_real:'REAL · LOCAL',cu_out:'Output tokens',cu_in:'Input',cu_cache:'Cache',cu_sess:'Sessions',cu_sessw:'sessions',bp_manual:'self-tracked',au_title:'Anthropic API · Tokens · Cost',au_real:'REAL · API',au_off:'NOT SET',au_setup:'Connect your Anthropic usage',au_s1:'Create an Admin API key in the Anthropic Console',au_s2:'Add it to',au_s3:'Refresh — real tokens & cost appear',au_safe:'Key stays local (git-ignored), never committed or shown.',au_cost:'Cost (7d)',au_7d:'Last 7 days',bp_all:'All',so_status:'By status',so_act:'By activity',so_date:'By date',so_name:'By name',bp_noactive:'Nothing active'},ko:{projects:'프로젝트',repos:'리포',commits:'커밋',theme:'테마',refresh:'갱신',t_milestones:'마일스톤',t_phases:'단계(Phase)',t_features:'기능별 상태',t_commits:'최근 커밋',t_log:'이벤트 로그',t_radar:'커밋 레이더',t_activity:'커밋 활동 · 14일',t_work:'작업 분포',t_branches:'브랜치',t_recs:'추천 액션',t_inprog:'진행 중',t_agents:'AI 에이전트',t_code:'코드 구성',t_modules:'모듈 구성',t_contrib:'기여자',t_stack:'기술 스택',t_screens:'UI · 화면',t_docs:'기획 · 문서',overview:'종합',ov_managed:'관리 중인 프로젝트',ov_other:'기타 리포',ov_projects:'프로젝트',ov_commits:'총 커밋',ov_progress:'평균 진행률',ov_feat:'기능 현황',ov_agents:'가동 에이전트',ms_short:'마일스톤',wip_short:'진행중',last_short:'최근',done_k:'완료',wip_k:'진행',todo_k:'대기',ov_board:'내 프로젝트',ov_managed2:'GIT 프로젝트 (자동 감지)',newproj:'새 프로젝트',m_name:'이름',m_desc:'한 줄 설명',m_status:'상태',m_progress:'진척도 %',m_updated:'최근 활동',m_cancel:'취소',m_save:'저장',bp_empty:'프로젝트가 없습니다',st_idea:'기획',st_active:'진행',st_done:'완료',st_hold:'보류',ov_cc:'CLAUDE CODE · 개발 현황',bp_recent:'최근7일',bp_act:'평균 활동',bp_prog:'진척',bp_actlbl:'활동',cp_prog:'전체 진행률',cp_metrics:'개발 지표',cp_now:'지금 진행중',m_db:'DB 테이블',m_c7:'7일 커밋',m_wip:'진행중 기능',m_ag:'AI 에이전트',bp_now:'현재',bp_detail:'상세 추가',m_task:'현재 작업',m_eta:'예상 완료',m_convos:'대화 수',m_docs:'첨부 문서',cu_title:'Claude Code · 실측 토큰 사용량',cu_real:'실측 · 로컬',cu_out:'출력 토큰',cu_in:'입력',cu_cache:'캐시',cu_sess:'세션',cu_sessw:'세션',bp_manual:'직접 기록',au_title:'Anthropic API · 토큰 · 비용',au_real:'실측 · API',au_off:'미설정',au_setup:'Anthropic 사용량 연결',au_s1:'Anthropic 콘솔에서 Admin API 키 생성',au_s2:'키를 넣기:',au_s3:'갱신하면 실제 토큰·비용 표시',au_safe:'키는 로컬(gitignore)에만 저장 · 커밋/노출 안 함',au_cost:'비용(7일)',au_7d:'최근 7일',bp_all:'전체',so_status:'상태순',so_act:'활동순',so_date:'날짜순',so_name:'이름순',bp_noactive:'진행 중인 항목 없음'},
 vi:{projects:'Dự án',repos:'Kho',commits:'Commit',theme:'Giao diện',refresh:'Làm mới',t_milestones:'Cột mốc',t_phases:'Giai đoạn',t_features:'Trạng thái tính năng',t_commits:'Commit gần đây',t_log:'Nhật ký sự kiện',t_radar:'Radar commit',t_activity:'Hoạt động commit · 14 ngày',t_work:'Phân bố công việc',t_branches:'Nhánh',t_recs:'Đề xuất',t_inprog:'Đang làm',t_agents:'AI Agents',t_code:'Thành phần mã',t_modules:'Cấu trúc module',t_contrib:'Đóng góp',t_stack:'Công nghệ',t_screens:'Màn hình',t_docs:'Tài liệu',overview:'Tổng hợp',ov_managed:'Dự án đang quản lý',ov_other:'Kho khác',ov_projects:'Dự án',ov_commits:'Tổng commit',ov_progress:'Tiến độ TB',ov_feat:'Tính năng',ov_agents:'Agent đang chạy',ms_short:'Cột mốc',wip_short:'Đang làm',last_short:'Gần đây',done_k:'Xong',wip_k:'Đang',todo_k:'Chờ',ov_board:'Dự án của tôi',ov_managed2:'Dự án Git (tự động)',newproj:'Dự án mới',m_name:'Tên',m_desc:'Mô tả ngắn',m_status:'Trạng thái',m_progress:'Tiến độ %',m_updated:'Hoạt động gần đây',m_cancel:'Hủy',m_save:'Lưu',bp_empty:'Chưa có dự án',st_idea:'Ý tưởng',st_active:'Đang làm',st_done:'Xong',st_hold:'Tạm dừng',ov_cc:'CLAUDE CODE · Phát triển',bp_recent:'7 ngày',bp_act:'HĐ TB',bp_prog:'Tiến độ',bp_actlbl:'Hoạt động',cp_prog:'Tiến độ chung',cp_metrics:'Chỉ số dev',cp_now:'Đang chạy',m_db:'Bảng DB',m_c7:'Commit 7d',m_wip:'Đang làm',m_ag:'AI Agent'},
 ja:{projects:'プロジェクト',repos:'リポ',commits:'コミット',theme:'テーマ',refresh:'更新',t_milestones:'マイルストン',t_phases:'フェーズ',t_features:'機能状態',t_commits:'最近のコミット',t_log:'イベントログ',t_radar:'コミットレーダー',t_activity:'コミット活動 · 14日',t_work:'作業分布',t_branches:'ブランチ',t_recs:'推奨',t_inprog:'進行中',t_agents:'AIエージェント',t_code:'コード構成',t_modules:'モジュール構成',t_contrib:'貢献者',t_stack:'技術スタック',t_screens:'UI · 画面',t_docs:'企画 · 文書',overview:'総合',ov_managed:'管理中のプロジェクト',ov_other:'その他リポ',ov_projects:'プロジェクト',ov_commits:'総コミット',ov_progress:'平均進捗',ov_feat:'機能',ov_agents:'稼働エージェント',ms_short:'マイルストン',wip_short:'進行中',last_short:'最近',done_k:'完了',wip_k:'進行',todo_k:'待機',ov_board:'マイプロジェクト',ov_managed2:'Gitプロジェクト(自動)',newproj:'新規',m_name:'名前',m_desc:'一行説明',m_status:'状態',m_progress:'進捗 %',m_updated:'最近の活動',m_cancel:'キャンセル',m_save:'保存',bp_empty:'プロジェクトなし',st_idea:'企画',st_active:'進行',st_done:'完了',st_hold:'保留',ov_cc:'CLAUDE CODE · 開発状況',bp_recent:'7日',bp_act:'平均活動',bp_prog:'進捗',bp_actlbl:'活動',cp_prog:'全体進捗',cp_metrics:'開発指標',cp_now:'進行中',m_db:'DBテーブル',m_c7:'7日コミット',m_wip:'進行中機能',m_ag:'AIエージェント'},
 es:{projects:'Proyectos',repos:'Repos',commits:'Commits',theme:'Tema',refresh:'Actualizar',t_milestones:'Hitos',t_phases:'Fases',t_features:'Estado de funciones',t_commits:'Commits recientes',t_log:'Registro',t_radar:'Radar de commits',t_activity:'Actividad · 14d',t_work:'Distribución',t_branches:'Ramas',t_recs:'Recomendado',t_inprog:'En progreso',t_agents:'Agentes IA',t_code:'Composición',t_modules:'Módulos',t_contrib:'Colaboradores',t_stack:'Stack',t_screens:'UI · Pantallas',t_docs:'Planificación · Docs',overview:'Resumen',ov_managed:'Proyectos gestionados',ov_other:'Otros repos',ov_projects:'Proyectos',ov_commits:'Commits totales',ov_progress:'Progreso medio',ov_feat:'Funciones',ov_agents:'Agentes activos',ms_short:'hitos',wip_short:'en curso',last_short:'último',done_k:'Hecho',wip_k:'Activo',todo_k:'Pendiente',ov_board:'Mis proyectos',ov_managed2:'Proyectos Git (auto)',newproj:'Nuevo',m_name:'Nombre',m_desc:'Descripción breve',m_status:'Estado',m_progress:'Progreso %',m_updated:'Última actividad',m_cancel:'Cancelar',m_save:'Guardar',bp_empty:'Sin proyectos',st_idea:'Idea',st_active:'Activo',st_done:'Hecho',st_hold:'Pausa',ov_cc:'CLAUDE CODE · ESTADO',bp_recent:'7d',bp_act:'actividad media',bp_prog:'progreso',bp_actlbl:'actividad',cp_prog:'Progreso general',cp_metrics:'Métricas dev',cp_now:'En progreso',m_db:'Tablas DB',m_c7:'Commits 7d',m_wip:'En progreso',m_ag:'Agentes IA'},
@@ -605,28 +624,63 @@ const ST_KEY={idea:'st_idea',active:'st_active',done:'st_done',hold:'st_hold'};
 let boardItems=[];
 async function loadBoard(){try{const d=await(await fetch('/api/my-projects',{cache:'no-store'})).json();boardItems=d.projects||[];renderBoard(d);}catch(e){}}
 function esc(s){return (s||'').replace(/</g,'&lt;');}
+let boardFilter='all',boardSort='status',boardTotals={},heldOpen=false;
+const ST_ORDER={active:0,idea:1,done:2,hold:3};
+function bpMetric(p){return Math.max(0,Math.min(100,(p.metric!=null?p.metric:(p.activity||0))));}
+function bpCard(p){
+  const pr=bpMetric(p),man=(p.progress||0)>0,days=(p.daysAgo==null)?'':'D+'+p.daysAgo;
+  const meta=[];
+  if(p.eta)meta.push(`<span class="bpc-eta">⏱ ${esc(p.eta)}</span>`);
+  if(p.convos)meta.push(`<span class="bpc-chip">💬 ${p.convos}</span>`);
+  if(p.docs)meta.push(`<span class="bpc-chip">📎 ${p.docs}</span>`);
+  return `<div class="bpc" data-id="${p.id}" data-status="${p.status||'active'}">
+    <div class="bpc-h"><span class="bpc-st">${tr(ST_KEY[p.status]||'st_active')}</span><span class="bpc-n" title="${esc(p.name)}">${esc(p.name)}</span><span class="bpc-ed" title="edit">✎</span><span class="bpc-rm" title="remove">✕</span></div>
+    <div class="bpc-bar"><i data-w="${pr}"></i></div>
+    <div class="bpc-f"><span class="bpc-pg">${pr}<small>%</small> <em>${man?tr('bp_prog'):tr('bp_actlbl')}</em></span><span class="bpc-up">${esc(p.updated)}${days?' · '+days:''}</span></div>
+    ${p.task?`<div class="bpc-task"><span class="tl">▸ ${tr('bp_now')}</span> ${esc(p.task)}</div>`:''}
+    ${meta.length?`<div class="bpc-meta">${meta.join('')}</div>`:''}
+    ${p.desc?`<div class="bpc-desc">${esc(p.desc)}</div>`:((!p.task&&!meta.length)?`<div class="bpc-add">✎ ${tr('bp_detail')}</div>`:'')}
+  </div>`;
+}
+function bpRow(p){
+  const pr=bpMetric(p);
+  return `<div class="bprow" data-id="${p.id}" data-status="${p.status||'hold'}"><span class="bpc-st">${tr(ST_KEY[p.status]||'st_hold')}</span><span class="brn" title="${esc(p.name)}">${esc(p.name)}</span><span class="brbar"><i style="width:${pr}%"></i></span><span class="brp">${pr}%</span><span class="bru">${esc(p.updated)}</span><span class="bpc-ed" title="edit">✎</span></div>`;
+}
+function bpSortFn(a,b){
+  if(boardSort==='status'){const d=(ST_ORDER[a.status]||0)-(ST_ORDER[b.status]||0);if(d)return d;return bpMetric(b)-bpMetric(a);}
+  if(boardSort==='act')return bpMetric(b)-bpMetric(a);
+  if(boardSort==='date')return (a.daysAgo==null?1e9:a.daysAgo)-(b.daysAgo==null?1e9:b.daysAgo);
+  if(boardSort==='name')return (a.name||'').localeCompare(b.name||'');
+  return 0;
+}
 function renderBoard(d){
-  const items=d.projects||[],t=d.totals||{};
+  if(d&&d.projects){boardItems=d.projects;boardTotals=d.totals||{};}
+  const items=boardItems||[],t=boardTotals||{};
   el('bpcount').textContent=items.length?`  ${items.length} · ${tr('st_active')} ${t.active||0} · ${tr('bp_recent')} ${t.recent||0} · ${tr('bp_act')} ${t.avgActivity||0}%`:'';
-  el('bpgrid').innerHTML=items.length?items.map(p=>{
-    const pr=Math.max(0,Math.min(100,(p.metric!=null?p.metric:(p.activity||0))));
-    const man=(p.progress||0)>0;
-    const days=(p.daysAgo==null)?'':'D+'+p.daysAgo;
-    const meta=[];
-    if(p.eta)meta.push(`<span class="bpc-eta">⏱ ${esc(p.eta)}</span>`);
-    if(p.convos)meta.push(`<span class="bpc-chip">💬 ${p.convos}</span>`);
-    if(p.docs)meta.push(`<span class="bpc-chip">📎 ${p.docs}</span>`);
-    return `<div class="bpc" data-id="${p.id}" data-status="${p.status||'active'}">
-      <div class="bpc-h"><span class="bpc-st">${tr(ST_KEY[p.status]||'st_active')}</span><span class="bpc-n" title="${esc(p.name)}">${esc(p.name)}</span><span class="bpc-ed" title="edit">✎</span><span class="bpc-rm" title="remove">✕</span></div>
-      <div class="bpc-bar"><i data-w="${pr}"></i></div>
-      <div class="bpc-f"><span class="bpc-pg">${pr}<small>%</small> <em>${man?tr('bp_prog'):tr('bp_actlbl')}</em></span><span class="bpc-up">${esc(p.updated)}${days?' · '+days:''}</span></div>
-      ${p.task?`<div class="bpc-task"><span class="tl">▸ ${tr('bp_now')}</span> ${esc(p.task)}</div>`:''}
-      ${meta.length?`<div class="bpc-meta">${meta.join('')}</div>`:''}
-      ${p.desc?`<div class="bpc-desc">${esc(p.desc)}</div>`:((!p.task&&!meta.length)?`<div class="bpc-add">✎ ${tr('bp_detail')}</div>`:'')}
-    </div>`;}).join(''):`<div style="color:var(--mut);font-size:14px;padding:6px 2px">${tr('bp_empty')}</div>`;
-  document.querySelectorAll('.bpc-ed').forEach(n=>n.onclick=e=>{e.stopPropagation();openEdit(boardItems.find(x=>x.id===n.closest('.bpc').dataset.id));});
+  // controls: filter chips + sort
+  const chips=[['all',tr('bp_all')],['active',tr('st_active')],['idea',tr('st_idea')],['done',tr('st_done')],['hold',tr('st_hold')]];
+  const sorts=[['status',tr('so_status')],['act',tr('so_act')],['date',tr('so_date')],['name',tr('so_name')]];
+  el('bpctrl').innerHTML=`<div class="chips">${chips.map(([k,l])=>`<button class="chip ${boardFilter===k?'on':''}" data-f="${k}">${l}</button>`).join('')}</div>`+
+    `<select class="langsel bpsort" id="bpsort">${sorts.map(([k,l])=>`<option value="${k}" ${boardSort===k?'selected':''}>${l}</option>`).join('')}</select>`;
+  el('bpctrl').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{boardFilter=c.dataset.f;renderBoard();});
+  el('bpsort').onchange=e=>{boardSort=e.target.value;renderBoard();};
+  // filter + sort
+  let view=items.slice();
+  if(boardFilter!=='all')view=view.filter(p=>(p.status||'active')===boardFilter);
+  view.sort(bpSortFn);
+  if(!view.length){el('bpgrid').innerHTML=`<div style="color:var(--mut);font-size:14px;padding:6px 2px">${tr('bp_empty')}</div>`;el('bpheld').innerHTML='';return;}
+  if(boardFilter==='all'){
+    const main=view.filter(p=>p.status!=='hold'),held=view.filter(p=>p.status==='hold');
+    el('bpgrid').innerHTML=main.map(bpCard).join('')||`<div style="color:var(--mut);font-size:13px;padding:4px">${tr('bp_noactive')}</div>`;
+    el('bpheld').innerHTML=held.length?`<div class="heldhd ${heldOpen?'open':''}" id="heldhd">▸ ${tr('st_hold')} ${held.length}</div><div class="heldlist" id="heldlist" style="display:${heldOpen?'block':'none'}">${held.map(bpRow).join('')}</div>`:'';
+    const hh=el('heldhd');if(hh)hh.onclick=()=>{heldOpen=!heldOpen;renderBoard();};
+  }else{
+    el('bpgrid').innerHTML=view.map(bpCard).join('');
+    el('bpheld').innerHTML='';
+  }
+  document.querySelectorAll('#overview .bpc-ed').forEach(n=>n.onclick=e=>{e.stopPropagation();openEdit(boardItems.find(x=>x.id===n.closest('[data-id]').dataset.id));});
   document.querySelectorAll('.bpc-rm').forEach(n=>n.onclick=e=>{e.stopPropagation();const c=n.closest('.bpc');removeBoard(c.dataset.id,c.querySelector('.bpc-n').textContent);});
-  document.querySelectorAll('.bpc').forEach(n=>n.onclick=()=>openEdit(boardItems.find(x=>x.id===n.dataset.id)));
+  document.querySelectorAll('.bpc,.bprow').forEach(n=>n.onclick=()=>openEdit(boardItems.find(x=>x.id===n.dataset.id)));
   sweepBars();
 }
 let editingId=null;
