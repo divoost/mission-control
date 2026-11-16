@@ -98,6 +98,9 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .radar .sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(120,200,255,.3),transparent 42%);animation:spin 4s linear infinite;mix-blend-mode:screen}
 .blip{position:absolute;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px currentColor}
 .rlegend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--mut);font-family:'Share Tech Mono';justify-content:center}.rlegend span{display:inline-flex;align-items:center;gap:6px}.rlegend i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 6px currentColor}
+.rlist{margin-top:13px;border-top:1px solid rgba(120,200,255,.1);padding-top:11px}
+.rlist .ri{display:flex;gap:9px;align-items:center;padding:5px 0;font-size:12.5px}.rlist .ri i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor}.rlist .ri .s{font-family:'Share Tech Mono';color:var(--cy);flex:0 0 auto}.rlist .ri .m{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tlstat{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;border-top:1px solid rgba(120,200,255,.1);padding-top:12px;font-size:13px;font-family:'Share Tech Mono';color:var(--mut)}.tlstat b{color:#eafcff;font-size:17px;margin-left:5px}
 .cm{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(120,200,255,.07);font-size:14px;break-inside:avoid}
 .cm .sha{font-family:'Share Tech Mono';color:var(--cy);flex:0 0 auto}.cm .ago{font-family:'Share Tech Mono';color:var(--mut2);font-size:12px;flex:0 0 auto}.cm .msg{color:var(--mut);line-height:1.3}
 .feed{column-count:2;column-gap:28px}
@@ -138,12 +141,12 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
           <line class="tick" x1="100" y1="5" x2="100" y2="17"/><line class="tick" x1="100" y1="183" x2="100" y2="195"/><line class="tick" x1="5" y1="100" x2="17" y2="100"/><line class="tick" x1="183" y1="100" x2="195" y2="100"/></svg>
           <div class="gcen"><div class="big mono" id="gp">—</div><div class="lbl" id="gm">—</div></div></div>
         <div id="steps"></div></div>
-      <div class="hud" data-panel="radar"><h2><span data-t="t_radar">Commit Radar</span><span class="sec">SEC-02</span></h2><div class="radar" id="radar"><div class="sweep"></div></div><div class="rlegend" id="rlegend"></div></div>
+      <div class="hud" data-panel="radar"><h2><span data-t="t_radar">Commit Radar</span><span class="sec">SEC-02</span></h2><div class="radar" id="radar"><div class="sweep"></div></div><div class="rlegend" id="rlegend"></div><div class="rlist" id="rlist"></div></div>
       <div class="hud" data-panel="features"><h2><span data-t="t_features">Feature Status</span><span class="sec">SEC-03</span></h2><div class="ftop"><div class="fdonut" id="fdonut"></div><div class="fsum" id="fsum"></div></div><div class="fgrid" id="features"></div></div>
     </div>
     <div class="row g3">
       <div class="hud" data-panel="phases"><h2><span data-t="t_phases">Phases</span><span class="sec">SEC-04</span></h2><div class="bars" id="phases"></div></div>
-      <div class="hud" data-panel="timeline"><h2><span data-t="t_activity">Commit Activity · 14d</span><span class="sec">SEC-05</span></h2><div class="spark" id="spark"></div><div class="sparkx" id="sparkx"></div></div>
+      <div class="hud" data-panel="timeline"><h2><span data-t="t_activity">Commit Activity · 14d</span><span class="sec">SEC-05</span></h2><div class="spark" id="spark"></div><div class="sparkx" id="sparkx"></div><div class="tlstat" id="tlstat"></div></div>
       <div class="hud" data-panel="inprogress"><h2><span data-t="t_inprog">In Progress</span><span class="sec">SEC-06</span></h2><div id="inprog"></div></div>
     </div>
     <div class="row g3">
@@ -203,6 +206,8 @@ function render(D){
   const tl=D.timeline||[],mx=Math.max(1,...tl.map(t=>t.v));
   el('spark').innerHTML=tl.map(t=>`<div class="bar" data-h="${Math.round(t.v/mx*100)}" title="${t.d}: ${t.v}"><span>${t.v||''}</span></div>`).join('');
   el('sparkx').innerHTML=tl.map((t,i)=>`<div>${i%2?'':t.d}</div>`).join('');
+  const t14=tl.reduce((a,t)=>a+t.v,0),act=tl.filter(t=>t.v>0).length,m14=Math.max(0,...tl.map(t=>t.v));
+  el('tlstat').innerHTML=`<span>14d<b>${t14}</b></span><span>${tr('active')||'active'}<b>${act}</b></span><span>max<b>${m14}</b></span><span>avg<b>${(t14/14).toFixed(1)}</b></span>`;
   requestAnimationFrame(()=>document.querySelectorAll('.spark .bar').forEach(b=>b.style.height=b.dataset.h+'%'));
   const ar=D.areas||[],amx=Math.max(1,...ar.map(a=>a.v));
   el('areas').innerHTML=ar.length?ar.map(a=>`<div class="b"><div class="bl"><span class="bn">${a.n}</span><span class="bv">${a.v}</span></div><div class="track"><div class="fill" data-w="${Math.round(a.v/amx*100)}" style="background:linear-gradient(90deg,${hexA(colorFor(a.n),.6)},${colorFor(a.n)})"></div></div></div>`).join(''):'<div style="color:var(--mut);font-size:14px">No tagged commits (e.g. <b>[area]</b> / <b>feat:</b>)</div>';
@@ -216,6 +221,7 @@ function render(D){
   const ch=document.createElement('div');ch.className='cross';ch.style.cssText='left:8px;top:109px;width:204px;height:1px';rd.appendChild(ch);
   (D.commits||[]).slice(0,18).forEach((c,i)=>{const ring=Math.floor(i/6),rad=[38,64,90][ring],ang=(i%6)/6*2*Math.PI-Math.PI/2+ring*0.5;const x=110+rad*Math.cos(ang),y=110+rad*Math.sin(ang);const col=colorFor(c.area);const b=document.createElement('div');b.className='blip';b.style.cssText=`left:${x}px;top:${y}px;background:${col};color:${col}`;b.title=c.sha+' '+(c.area||'')+' '+c.msg;rd.appendChild(b);});
   el('rlegend').innerHTML=(D.areas||[]).slice(0,5).map(a=>`<span style="color:${colorFor(a.n)}"><i style="background:${colorFor(a.n)}"></i>${a.n}</span>`).join('')||'<span style="color:var(--mut2)">commits by area</span>';
+  el('rlist').innerHTML=(D.commits||[]).slice(0,8).map(c=>`<div class="ri"><i style="background:${colorFor(c.area)};color:${colorFor(c.area)}"></i><span class="s">${c.sha}</span><span class="m">${((c.area?'['+c.area+'] ':'')+(c.msg||'')).replace(/</g,'&lt;')}</span></div>`).join('');
   const C=2*Math.PI*70,arc=el('arc');arc.style.strokeDasharray=C;arc.style.strokeDashoffset=C;
   requestAnimationFrame(()=>{arc.style.strokeDashoffset=C*(1-pct/100);document.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%');});
   let cur=0;const ci=setInterval(()=>{cur+=Math.max(1,Math.round(pct/28));if(cur>=pct){cur=pct;clearInterval(ci);}el('gp').textContent=total?cur+'%':'—';},40);
