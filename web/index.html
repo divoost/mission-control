@@ -68,8 +68,12 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .bars .b{margin-bottom:12px}.bars .bl{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px}.bars .bl .bn{color:var(--ink)}.bars .bl .bv{font-family:'Share Tech Mono';color:var(--cy)}
 .track{height:10px;background:rgba(120,200,255,.08);border:1px solid var(--line);overflow:hidden;border-radius:2px}
 .fill{height:100%;width:0;background:linear-gradient(90deg,var(--cy2),var(--cy));box-shadow:0 0 10px rgba(120,200,255,.6);transition:width 1.3s cubic-bezier(.2,.8,.2,1)}
-.fsum{display:flex;gap:16px;margin-bottom:12px;font-size:13px;font-family:'Share Tech Mono'}
-.fsum b{font-size:19px;margin-left:5px}.fsum .d b{color:var(--teal)}.fsum .w b{color:var(--amber)}.fsum .t b{color:var(--mut)}
+.ftop{display:flex;align-items:center;gap:22px;margin-bottom:14px}
+.fdonut{width:118px;height:118px;flex:0 0 auto;position:relative}.fdonut svg{width:118px;height:118px}.fdonut circle{transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1)}
+.fdonut .fc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.fdonut .fc .n{font-size:26px;color:#eafcff;font-family:'Share Tech Mono';text-shadow:var(--glow);line-height:1}.fdonut .fc .l{font-size:10px;color:var(--mut);letter-spacing:.1em;margin-top:2px}
+.fsum{display:flex;flex-direction:column;gap:9px;font-size:14px;font-family:'Share Tech Mono'}
+.fsum .row{display:flex;align-items:center;gap:9px}.fsum .row i{width:11px;height:11px;border-radius:50%;box-shadow:0 0 6px currentColor}.fsum .row b{font-size:19px;margin-left:auto;color:#eafcff}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px}
 .fcell{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px solid var(--line);border-radius:5px;background:rgba(8,22,38,.5);font-size:12.5px}
 .fcell .fd{width:9px;height:9px;border-radius:50%;flex:0 0 auto}.fcell.done{border-color:rgba(43,255,176,.4)}.fcell.done .fd{background:var(--teal);box-shadow:0 0 7px var(--teal)}
@@ -127,7 +131,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
             <div class="gcen"><div class="big mono" id="gp">—</div><div class="lbl" id="gm">—</div></div></div>
           <div id="steps"></div></div>
         <div class="hud" data-panel="phases"><h2><span data-t="t_phases">Phases</span><span class="sec">SEC-02</span></h2><div class="bars" id="phases"></div></div>
-        <div class="hud" data-panel="features"><h2><span data-t="t_features">Feature Status</span><span class="sec">SEC-03</span></h2><div class="fsum" id="fsum"></div><div class="fgrid" id="features"></div></div>
+        <div class="hud" data-panel="features"><h2><span data-t="t_features">Feature Status</span><span class="sec">SEC-03</span></h2><div class="ftop"><div class="fdonut" id="fdonut"></div><div class="fsum" id="fsum"></div></div><div class="fgrid" id="features"></div></div>
         <div class="hud" data-panel="commits"><h2><span data-t="t_commits">Recent Commits</span><span class="sec">SEC-04</span></h2><div class="feed" id="feed"></div></div>
       </div>
       <div class="col">
@@ -173,7 +177,10 @@ function render(D){
   el('phases').innerHTML=(D.phases||[]).length?(D.phases).map(p=>`<div class="b"><div class="bl"><span class="bn">${p.n}</span><span class="bv">${p.v}%</span></div><div class="track"><div class="fill" data-w="${p.v}"></div></div></div>`).join(''):'<div style="color:var(--mut);font-size:13px">Add <b>phases</b> in config.json</div>';
   // features
   const fs=D.features||[],fd=fs.filter(f=>f.s==='done').length,fw=fs.filter(f=>f.s==='wip').length,ft=fs.filter(f=>f.s==='todo').length;
-  el('fsum').innerHTML=fs.length?`<span class="d">완료<b>${fd}</b></span><span class="w">진행<b>${fw}</b></span><span class="t">대기<b>${ft}</b></span>`:'';
+  const totF=fs.length||1,R=50,C2=2*Math.PI*R;let off=0,segs='';
+  [[fd,'#2bffb0'],[fw,'#ffd24a'],[ft,'#5b7a97']].forEach(([v,col])=>{const ln=v/totF*C2;segs+=`<circle cx="60" cy="60" r="${R}" fill="none" stroke="${col}" stroke-width="13" stroke-dasharray="${ln.toFixed(1)} ${(C2-ln).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 60 60)" style="filter:drop-shadow(0 0 5px ${col})"/>`;off+=ln;});
+  el('fdonut').innerHTML=fs.length?`<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="rgba(120,200,255,.1)" stroke-width="13"/>${segs}</svg><div class="fc"><div class="n">${Math.round(fd/totF*100)}%</div><div class="l">완료</div></div>`:'';
+  el('fsum').innerHTML=fs.length?`<div class="row" style="color:#2bffb0"><i style="background:#2bffb0"></i>완료<b>${fd}</b></div><div class="row" style="color:#ffd24a"><i style="background:#ffd24a"></i>진행<b>${fw}</b></div><div class="row" style="color:#5b7a97"><i style="background:#5b7a97"></i>대기<b>${ft}</b></div>`:'';
   el('features').innerHTML=fs.length?fs.map(f=>`<div class="fcell ${f.s}"><span class="fd"></span><span class="fn" title="${f.n}">${f.n}</span></div>`).join(''):'<div style="color:var(--mut);font-size:13px">Add <b>features</b> in config.json</div>';
   // timeline
   const tl=D.timeline||[],mx=Math.max(1,...tl.map(t=>t.v));
