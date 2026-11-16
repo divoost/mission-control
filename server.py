@@ -106,18 +106,20 @@ BOARD_PATH = os.path.join(HERE, "my-projects.json")
 STATUSES = ("idea", "active", "done", "hold")  # 기획 / 진행 / 완료 / 보류
 
 
-BOARD_SAMPLE = os.path.join(HERE, "my-projects.sample.json")
+def board_enabled():
+    # Opt-in only: the manual "My Projects" board stays hidden until the user
+    # creates my-projects.json (or sets "board": true). Default experience is
+    # 100% automatic — no manual data entry — so the tool works out of the box.
+    return os.path.exists(BOARD_PATH) or bool(CFG.get("board"))
 
 
 def load_board():
-    for p in (BOARD_PATH, BOARD_SAMPLE):   # your private board, else the shipped sample
-        try:
-            with open(p, encoding="utf-8") as fh:
-                data = json.load(fh)
-            return data if isinstance(data, list) else data.get("projects", [])
-        except Exception:
-            continue
-    return []
+    try:
+        with open(BOARD_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else data.get("projects", [])
+    except Exception:
+        return []
 
 
 def save_board(items):
@@ -713,7 +715,7 @@ class H(BaseHTTPRequestHandler):
             done = sum(1 for it in items if it.get("status") == "done")
             recent = sum(1 for it in items if (it.get("daysAgo") is not None and it["daysAgo"] <= 7))
             avgAct = round(sum(it.get("activity") or 0 for it in items) / tot) if tot else 0
-            return self._send(200, json.dumps({"projects": items, "totals": {"total": tot, "active": act, "done": done, "recent": recent, "avgActivity": avgAct}}, ensure_ascii=False), "application/json; charset=utf-8")
+            return self._send(200, json.dumps({"enabled": board_enabled(), "projects": items, "totals": {"total": tot, "active": act, "done": done, "recent": recent, "avgActivity": avgAct}}, ensure_ascii=False), "application/json; charset=utf-8")
         if u.path == "/api/status":
             try:
                 proj = find_project(q.get("p", [None])[0])

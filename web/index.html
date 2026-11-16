@@ -351,8 +351,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
         <div class="ovband"><span class="bdot"></span><b data-t="ov_other">OTHER REPOS</b><span class="ln"></span></div>
         <div class="ovoth" id="ovoth"></div>
       </section>
-      <!-- SECTION 3 · My Projects / Claude.ai (magenta) -->
-      <section class="ovsec mp">
+      <!-- SECTION 3 · My Projects / Claude.ai (magenta) · opt-in, hidden by default -->
+      <section class="ovsec mp" id="mpSec" style="display:none">
         <div class="ovband"><span class="bdot"></span><b data-t="ov_board">내 프로젝트</b><span class="realbadge man" data-t="bp_manual">직접 기록</span><span class="bpcount" id="bpcount"></span><span class="ln"></span></div>
         <div class="bpctrl" id="bpctrl"></div>
         <div class="bpgrid" id="bpgrid"></div>
@@ -624,7 +624,7 @@ const ST_KEY={idea:'st_idea',active:'st_active',done:'st_done',hold:'st_hold'};
 let boardItems=[];
 async function loadBoard(){try{const d=await(await fetch('/api/my-projects',{cache:'no-store'})).json();boardItems=d.projects||[];renderBoard(d);}catch(e){}}
 function esc(s){return (s||'').replace(/</g,'&lt;');}
-let boardFilter='all',boardSort='status',boardTotals={},heldOpen=false;
+let boardFilter='all',boardSort='status',boardTotals={},heldOpen=false,boardEnabled=true;
 const ST_ORDER={active:0,idea:1,done:2,hold:3};
 function bpMetric(p){return Math.max(0,Math.min(100,(p.metric!=null?p.metric:(p.activity||0))));}
 function bpCard(p){
@@ -654,7 +654,8 @@ function bpSortFn(a,b){
   return 0;
 }
 function renderBoard(d){
-  if(d&&d.projects){boardItems=d.projects;boardTotals=d.totals||{};}
+  if(d&&d.projects){boardItems=d.projects;boardTotals=d.totals||{};boardEnabled=(d.enabled!==false);}
+  const mp=el('mpSec');if(!boardEnabled){if(mp)mp.style.display='none';return;}if(mp)mp.style.display='';
   const items=boardItems||[],t=boardTotals||{};
   el('bpcount').textContent=items.length?`  ${items.length} · ${tr('st_active')} ${t.active||0} · ${tr('bp_recent')} ${t.recent||0} · ${tr('bp_act')} ${t.avgActivity||0}%`:'';
   // controls: filter chips + sort
