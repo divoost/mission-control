@@ -285,6 +285,34 @@ def build_status(proj):
             if len(features_out) >= 12:
                 break
 
+    # planning / spec documents
+    docs_list, seen_d = [], set()
+    for f in files:
+        fl = f.lower()
+        b = os.path.basename(f)
+        is_doc = fl.endswith((".md", ".mdx", ".rst", ".adoc")) or "/docs/" in ("/" + fl) or "spec" in fl or "plan" in fl
+        if is_doc and b.lower() not in seen_d:
+            seen_d.add(b.lower())
+            tag = "SPEC" if "spec" in fl else ("PLAN" if "plan" in fl else ("SQL" if fl.endswith(".sql") else "DOC"))
+            docs_list.append({"n": b, "t": tag})
+        if len(docs_list) >= 14:
+            break
+    docs_out = proj.get("docs") or docs_list
+    # UI screens / routes
+    PAGE_DIRS = ("/pages/", "/app/", "/screens/", "/routes/", "/views/")
+    scr, seen_s = [], set()
+    for f in files:
+        fl = f.lower()
+        b = os.path.basename(f).rsplit(".", 1)[0]
+        is_page = fl.endswith((".html", ".htm")) or (
+            any(s in ("/" + fl) for s in PAGE_DIRS) and fl.endswith((".tsx", ".jsx", ".vue", ".svelte", ".ts", ".js")))
+        if is_page and b.lower() not in ("index", "layout", "_app", "_document") and b.lower() not in seen_s:
+            seen_s.add(b.lower())
+            scr.append(b)
+        if len(scr) >= 24:
+            break
+    screens_out = proj.get("screens") or scr
+
     gh = [["Total commits", total_commits], ["Branches", str(branches_n)], ["Contributors", str(contrib)],
           ["Pages/views", str(pages)], ["DB tables", str(dbt)], ["Tracked files", str(len(files))],
           ["TODO / FIXME", str(todo)], ["Last activity", last]]
@@ -300,6 +328,7 @@ def build_status(proj):
         "dbt": dbt, "phases": phases_out, "features": features_out,
         "agents": proj.get("agents", []), "langs": langs, "dirs": dirs,
         "contributors": contributors, "stack": stack,
+        "docsList": docs_out, "screens": screens_out,
     }
 
 
