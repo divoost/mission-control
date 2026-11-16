@@ -16,7 +16,7 @@ Point it at any git repo. See milestones, velocity, work distribution, branches 
 Most "git dashboards" show GitHub traffic (clones/stars). System HUDs show CPU/RAM. **Mission Control shows your project's _development status_** — how far along, what's moving, where the work is going — in a cinematic HUD you can keep open on a second screen.
 
 - 🛰 **Zero‑config, auto‑detected** — point it at a repo and it derives **milestones** (repo maturity: docs/tests/CI/container/releases), **phases** (setup & quality completeness), **feature status** (modules by recent activity), **tech stack**, **code composition** and **contributors**. Set any of these in config only when you want exact values — config overrides auto.
-- 🗂 **My Projects board** — a curated card board for work that isn't a git repo (planning, ops, external projects): name, status (idea/active/done/hold) and progress. Add / edit / remove right from the HUD; stored locally in `my-projects.json` (git-ignored). Shown in the aggregate **Overview** alongside your git projects.
+- 🗂 **My Projects board** — a card board for work that isn't a git repo (planning, ops, external projects). Each card auto-derives an **activity score and status** from its last-activity date (recent = high / active, stale = low / hold) so it's never a dead `0%`; set an explicit progress to override. Stored locally in `my-projects.json` (git-ignored; falls back to `my-projects.sample.json`). Shown in the aggregate **Overview** below your Claude-Code / git projects.
 - 📈 **Commit activity (14d)** — momentum at a glance.
 - 🧩 **Work distribution** — tallies commit tags (`[area]` or `feat:` / `fix:` …) so you see where effort goes.
 - 🌿 **Branches, TODO/FIXME, contributors, pages, files** — live counts.

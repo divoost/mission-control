@@ -5,7 +5,7 @@ Lists all your git repos and shows each one's development status as a
 sci-fi HUD. Reads ONLY git structure / counts. Never reads .env, keys,
 tokens or secrets. Configure via config.json.
 """
-import json, os, re, subprocess, datetime, collections, urllib.parse, threading
+import json, os, re, subprocess, datetime, collections, urllib.parse, threading, math
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -127,6 +127,80 @@ def save_board(items):
 
 def _board_id():
     return "mp_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+
+
+def _days_ago(s):
+    """Best-effort parse of a 'last activity' label (KO/EN, relative or absolute) → days."""
+    s = (s or "").strip()
+    if not s:
+        return None
+    today = datetime.date.today()
+    low = s.lower()
+    if "오늘" in s or "today" in low:
+        return 0
+    if "어제" in s or "yesterday" in low:
+        return 1
+    if "그저께" in s or "그제" in s:
+        return 2
+    if "지난주" in s or "last week" in low:
+        return 7
+    m = re.search(r"(\d+)\s*일\s*전", s) or re.search(r"(\d+)\s*days?\s*ago", low)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"(\d+)\s*월\s*(\d+)\s*일", s)            # 10월 19일
+    if m:
+        mo, da = int(m.group(1)), int(m.group(2))
+    else:
+        m = re.search(r"([A-Za-z]{3,})\s+(\d+)", s)          # Oct 2
+        if not m:
+            return None
+        try:
+            mo = datetime.datetime.strptime(m.group(1)[:3], "%b").month
+            da = int(m.group(2))
+        except Exception:
+            return None
+    try:
+        d = datetime.date(today.year, mo, da)
+        if d > today:
+            d = datetime.date(today.year - 1, mo, da)
+        return (today - d).days
+    except Exception:
+        return None
+
+
+def _activity(days):
+    """Recency → activity score 0..100 (decays over ~3 weeks)."""
+    if days is None:
+        return 0
+    return max(4, min(100, round(100 * math.exp(-days / 21.0))))
+
+
+def _auto_status(days, cur):
+    if cur == "done":
+        return "done"
+    if days is None:
+        return cur or "hold"
+    if days <= 14:
+        return "active"
+    if days <= 40:
+        return "idea"   # 완만 — treated visually as mid
+    return "hold"
+
+
+def enrich_board(items):
+    out = []
+    for it in items:
+        d = _days_ago(it.get("updated"))
+        act = _activity(d)
+        prog = int(it.get("progress") or 0)
+        e = dict(it)
+        e["daysAgo"] = d
+        e["activity"] = act
+        # show activity when the user has not set an explicit progress value
+        e["metric"] = prog if prog > 0 else act
+        e["status"] = _auto_status(d, it.get("status"))
+        out.append(e)
+    return out
 
 
 def find_project(pid):
@@ -457,12 +531,13 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/my-projects":
-            items = load_board()
+            items = enrich_board(load_board())
             tot = len(items)
             act = sum(1 for it in items if it.get("status") == "active")
             done = sum(1 for it in items if it.get("status") == "done")
-            avg = round(sum(int(it.get("progress") or 0) for it in items) / tot) if tot else 0
-            return self._send(200, json.dumps({"projects": items, "totals": {"total": tot, "active": act, "done": done, "avgProgress": avg}}, ensure_ascii=False), "application/json; charset=utf-8")
+            recent = sum(1 for it in items if (it.get("daysAgo") is not None and it["daysAgo"] <= 7))
+            avgAct = round(sum(it.get("activity") or 0 for it in items) / tot) if tot else 0
+            return self._send(200, json.dumps({"projects": items, "totals": {"total": tot, "active": act, "done": done, "recent": recent, "avgActivity": avgAct}}, ensure_ascii=False), "application/json; charset=utf-8")
         if u.path == "/api/status":
             try:
                 proj = find_project(q.get("p", [None])[0])
