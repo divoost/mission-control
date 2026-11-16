@@ -343,6 +343,71 @@ def projects_list():
     return {"projects": items, "totals": {"projects": len(items), "commits": tot}}
 
 
+def overview_item(proj):
+    """Light per-project rollup for the aggregate dashboard (few git calls)."""
+    repo = proj["repo"]
+    sub = proj.get("subpath")
+    ps = (["--", sub] if sub else [])
+    ref = resolve_ref(proj)
+    commits = int(sh(repo, ["git", "rev-list", "--count", ref] + ps, timeout=8) or 0)
+    last = sh(repo, ["git", "log", "-1", "--format=%cr", ref] + ps, timeout=8) or "-"
+    mdefs = proj.get("milestones") or []
+    if mdefs:
+        ms, done = milestones(repo, ref, mdefs)
+        total = len(ms)
+    else:
+        total, done = 0, 0
+    feats = proj.get("features") or []
+    fd = sum(1 for f in feats if f.get("s") == "done")
+    fw = sum(1 for f in feats if f.get("s") == "wip")
+    ftd = sum(1 for f in feats if f.get("s") == "todo")
+    ags = proj.get("agents") or []
+    arun = sum(1 for a in ags if a.get("s") == "run")
+    phs = proj.get("phases") or []
+    pavg = round(sum(p.get("v", 0) for p in phs) / len(phs)) if phs else None
+    prog = round(done / total * 100) if total else pavg
+    return {
+        "id": pid_of(proj), "name": proj.get("name"), "tagline": proj.get("tagline") or "",
+        "theme": proj.get("theme") or CFG.get("theme", "cyan"),
+        "commits": commits, "last": last, "progress": prog,
+        "ms": {"done": done, "total": total},
+        "feat": {"done": fd, "wip": fw, "todo": ftd},
+        "agents": {"run": arun, "total": len(ags)},
+        "phases": phs,
+    }
+
+
+def overview():
+    cfg_items, others = [], []
+    tot_c = prog_sum = prog_n = FD = FW = FT = ARUN = 0
+    for p in PROJECTS:
+        if p.get("configured"):
+            it = overview_item(p)
+            cfg_items.append(it)
+            tot_c += it["commits"]
+            if it["progress"] is not None:
+                prog_sum += it["progress"]
+                prog_n += 1
+            FD += it["feat"]["done"]
+            FW += it["feat"]["wip"]
+            FT += it["feat"]["todo"]
+            ARUN += it["agents"]["run"]
+        else:
+            repo = p["repo"]
+            sub = p.get("subpath")
+            ps = (["--", sub] if sub else [])
+            c = int(sh(repo, ["git", "rev-list", "--count", "HEAD"] + ps, timeout=8) or 0)
+            l = sh(repo, ["git", "log", "-1", "--format=%cr"] + ps, timeout=8) or "-"
+            tot_c += c
+            others.append({"id": pid_of(p), "name": p["name"], "commits": c, "last": l})
+    totals = {"projects": len(cfg_items), "repos": len(PROJECTS), "commits": tot_c,
+              "avgProgress": round(prog_sum / prog_n) if prog_n else 0,
+              "feat": {"done": FD, "wip": FW, "todo": FT}, "agentsRun": ARUN}
+    return {"projects": cfg_items, "others": others, "totals": totals,
+            "theme": CFG.get("theme", "cyan"),
+            "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
 class H(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype):
         self.send_response(code)
@@ -356,6 +421,11 @@ class H(BaseHTTPRequestHandler):
         q = urllib.parse.parse_qs(u.query)
         if u.path == "/api/projects":
             return self._send(200, json.dumps(projects_list(), ensure_ascii=False), "application/json; charset=utf-8")
+        if u.path == "/api/overview":
+            try:
+                return self._send(200, json.dumps(overview(), ensure_ascii=False), "application/json; charset=utf-8")
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/status":
             try:
                 proj = find_project(q.get("p", [None])[0])
