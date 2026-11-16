@@ -155,8 +155,6 @@ def build_status(proj):
     ps = (["--", sub] if sub else [])      # path scope for monorepo sub-apps
     area_re = proj.get("areaRegex") or CFG.get("areaRegex") or r"\[([^\]]+)\]|^([a-z]+)(?:\(|:)"
     ref = resolve_ref(proj)
-    ms, done = milestones(repo, ref, proj.get("milestones", []))
-    total = len(ms)
 
     def area_of(subject):
         m = re.search(area_re, subject)
@@ -233,6 +231,60 @@ def build_status(proj):
     _add("Python", ".py" in fl)
     _add("SQL", ".sql" in fl)
 
+    # ---- auto-detection: used when config does not provide milestones/phases/features ----
+    fnames = [os.path.basename(f).lower() for f in files]
+    lp = ["/" + f.lower() for f in files]
+    has_docs = any(n.startswith("readme") for n in fnames) or any("/docs/" in p for p in lp)
+    has_tests = any(("test" in p or "spec" in p or "__tests__" in p) for p in lp)
+    has_ci = any("/.github/workflows/" in p for p in lp) or any(n in (".gitlab-ci.yml", ".travis.yml") for n in fnames)
+    has_docker = any(n == "dockerfile" or n.startswith("docker-compose") for n in fnames)
+    has_types = any(n == "tsconfig.json" for n in fnames)
+    has_lint = any(n.startswith((".eslintrc", ".prettierrc", ".flake8", ".ruff")) or n in ("ruff.toml",) for n in fnames)
+    tags_n = len([t for t in sh(repo, ["git", "tag"]).splitlines() if t])
+
+    mdefs = proj.get("milestones")
+    if not mdefs:
+        mdefs = [
+            {"name": "Repository initialized", "done": True},
+            {"name": "Documentation", "done": bool(has_docs)},
+            {"name": "Tests", "done": bool(has_tests)},
+            {"name": "CI / CD", "done": bool(has_ci)},
+            {"name": "Containerized", "done": bool(has_docker)},
+            {"name": "Released (tags)", "done": tags_n > 0},
+        ]
+    ms, done = milestones(repo, ref, mdefs)
+    total = len(ms)
+
+    phases_out = proj.get("phases")
+    if not phases_out:
+        phases_out = [
+            {"n": "Docs", "v": 100 if has_docs else 0},
+            {"n": "Tests", "v": 100 if has_tests else 0},
+            {"n": "CI / CD", "v": 100 if has_ci else 0},
+            {"n": "Typed", "v": 100 if has_types else 0},
+            {"n": "Lint / Format", "v": 100 if has_lint else 0},
+            {"n": "Containerized", "v": 100 if has_docker else 0},
+        ]
+
+    features_out = proj.get("features")
+    if not features_out:
+        now = datetime.datetime.now().timestamp()
+        features_out = []
+        SKIP_DIR = {"styles", "db", "dist", "build", "public", "assets", "__tests__",
+                    "node_modules", "vendor", "coverage", "scripts", "config", "static", "images", "img"}
+        for d in dirs:
+            nm = d["n"]
+            if nm == "(root)" or nm.startswith(".") or nm in SKIP_DIR:
+                continue
+            ct = sh(repo, ["git", "log", "-1", "--format=%ct", ref] + ps + ["--", basep + nm])
+            try:
+                age = now - int(ct)
+            except Exception:
+                age = 9e18
+            features_out.append({"n": nm, "s": "wip" if age < 14 * 86400 else "done"})
+            if len(features_out) >= 12:
+                break
+
     gh = [["Total commits", total_commits], ["Branches", str(branches_n)], ["Contributors", str(contrib)],
           ["Pages/views", str(pages)], ["DB tables", str(dbt)], ["Tracked files", str(len(files))],
           ["TODO / FIXME", str(todo)], ["Last activity", last]]
@@ -245,7 +297,7 @@ def build_status(proj):
         "total": total, "done": done, "milestones": ms, "commits": commits, "gh": gh,
         "timeline": timeline, "areas": area_list, "todo": int(todo or 0), "branches": branches,
         "recs": proj.get("recs", CFG.get("recs", [])), "pages": pages, "files": len(files),
-        "dbt": dbt, "phases": proj.get("phases", []), "features": proj.get("features", []),
+        "dbt": dbt, "phases": phases_out, "features": features_out,
         "agents": proj.get("agents", []), "langs": langs, "dirs": dirs,
         "contributors": contributors, "stack": stack,
     }

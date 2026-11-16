@@ -15,7 +15,7 @@ Point it at any git repo. See milestones, velocity, work distribution, branches 
 
 Most "git dashboards" show GitHub traffic (clones/stars). System HUDs show CPU/RAM. **Mission Control shows your project's _development status_** — how far along, what's moving, where the work is going — in a cinematic HUD you can keep open on a second screen.
 
-- 🛰 **Milestone gauge** — define milestones in config; auto‑detected from files or commit patterns, or set manually.
+- 🛰 **Zero‑config, auto‑detected** — point it at a repo and it derives **milestones** (repo maturity: docs/tests/CI/container/releases), **phases** (setup & quality completeness), **feature status** (modules by recent activity), **tech stack**, **code composition** and **contributors**. Set any of these in config only when you want exact values — config overrides auto.
 - 📈 **Commit activity (14d)** — momentum at a glance.
 - 🧩 **Work distribution** — tallies commit tags (`[area]` or `feat:` / `fix:` …) so you see where effort goes.
 - 🌿 **Branches, TODO/FIXME, contributors, pages, files** — live counts.
@@ -49,7 +49,9 @@ Open **http://127.0.0.1:8799** → done. (Requires `git` + Python 3.8+.)
 | `panels{}` | Toggle any panel on/off |
 | `recs[]` | Optional "recommended next actions" list |
 
-> Your `config.json` is **git‑ignored** — keep a private config that points at your repo, publish only `config.sample.json`.
+Every field is optional. With no `milestones` / `phases` / `features` / `agents`, those panels are **auto-derived from git** — so a new repo looks complete with zero setup.
+
+> Your `config.json` is **git‑ignored** — keep a private config that points at your repos, publish only `config.sample.json`.
 
 ## How it works
 
