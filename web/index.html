@@ -140,6 +140,44 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .ovoth{display:flex;flex-wrap:wrap;gap:9px}
 .ovoth .oc{display:flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid var(--line);border-radius:5px;background:rgba(8,22,38,.4);cursor:pointer;transition:.12s}.ovoth .oc:hover{border-color:var(--line2);color:var(--cy)}
 .ovoth .oc .on2{font-size:13px;color:var(--ink)}.ovoth .oc:hover .on2{color:var(--cy)}.ovoth .oc .oc2{font-size:11px;font-family:'Share Tech Mono';color:var(--mut2)}.ovoth .oc .ol{font-size:10px;font-family:'Share Tech Mono';color:var(--mut2)}
+/* add / remove project */
+.newprojbtn{width:calc(100% - 4px);margin:0 2px 12px;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--cy);background:rgba(10,28,44,.72);border:1px solid var(--line2);padding:10px;cursor:pointer;letter-spacing:.05em;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));transition:.15s}
+.newprojbtn:hover{filter:brightness(1.3);box-shadow:0 0 14px rgba(120,200,255,.25)}.newprojbtn:active{transform:scale(.98)}
+.proj .rm{opacity:0;flex:0 0 auto;color:var(--mut2);font-family:'Share Tech Mono';font-size:13px;line-height:1;padding:3px 6px;border-radius:3px;transition:.12s;margin-left:2px}
+.proj:hover .rm{opacity:.65}.proj .rm:hover{opacity:1;color:var(--red);background:rgba(255,109,134,.12)}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(2,6,12,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;animation:fadein .25s both}
+.modalbox{width:460px;max-width:92vw;background:linear-gradient(180deg,rgba(14,32,52,.98),rgba(7,16,28,.98));border:1px solid var(--line2);padding:24px 26px;box-shadow:0 0 44px rgba(40,120,180,.3),var(--glow);clip-path:polygon(0 15px,15px 0,calc(100% - 19px) 0,100% 19px,100% 100%,19px 100%,0 calc(100% - 19px))}
+.modalbox h3{margin:0 0 18px;color:var(--cy);font-size:19px;letter-spacing:.1em;text-shadow:var(--glow)}
+.modalbox label{display:block;font-size:12px;color:var(--mut);margin-bottom:13px;letter-spacing:.02em}
+.modalbox input{width:100%;margin-top:6px;background:rgba(8,22,38,.85);border:1px solid var(--line);color:var(--ink);font-family:'Share Tech Mono',monospace;font-size:14px;padding:10px 12px;border-radius:4px;outline:none}
+.modalbox input:focus{border-color:var(--line2);box-shadow:0 0 10px rgba(120,200,255,.2)}
+.mrow{display:flex;gap:13px}.mrow label{flex:1}
+.merr{color:var(--red);font-size:13px;min-height:19px;margin-bottom:8px;font-family:'Share Tech Mono'}
+.mbtns{display:flex;justify-content:flex-end;gap:11px;margin-top:4px}
+.modalbox select{width:100%;margin-top:6px;background:rgba(8,22,38,.85);border:1px solid var(--line);color:var(--ink);font-family:'Share Tech Mono',monospace;font-size:14px;padding:10px 11px;border-radius:4px;outline:none}
+.modalbox select:focus{border-color:var(--line2)}
+/* My Projects board */
+.ovsub .bpcount{font-family:'Share Tech Mono';font-size:13px;color:var(--mut2);letter-spacing:0;margin-left:-4px}
+.miniadd{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--cy);background:rgba(10,28,44,.7);border:1px solid var(--line2);padding:6px 12px;cursor:pointer;letter-spacing:.04em;border-radius:4px;transition:.15s;flex:0 0 auto}
+.miniadd:hover{filter:brightness(1.3);box-shadow:0 0 12px rgba(120,200,255,.22)}
+.bpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px;margin-bottom:24px}
+.bpc{position:relative;background:linear-gradient(180deg,rgba(12,30,48,.5),rgba(6,16,28,.4));border:1px solid var(--line);border-radius:6px;padding:14px 15px;clip-path:polygon(0 9px,9px 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));transition:.14s}
+.bpc:hover{border-color:var(--line2);box-shadow:0 0 15px rgba(120,200,255,.12)}
+.bpc-h{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.bpc-st{font-size:10px;font-family:'Share Tech Mono';padding:2px 7px;border:1px solid;border-radius:3px;flex:0 0 auto;letter-spacing:.04em}
+.bpc[data-status=active] .bpc-st{color:var(--amber);border-color:rgba(255,210,74,.45);background:rgba(255,210,74,.07)}
+.bpc[data-status=idea] .bpc-st{color:var(--ind);border-color:rgba(142,162,255,.45);background:rgba(142,162,255,.07)}
+.bpc[data-status=done] .bpc-st{color:var(--teal);border-color:rgba(43,255,176,.4);background:rgba(43,255,176,.07)}
+.bpc[data-status=hold] .bpc-st{color:var(--mut);border-color:var(--line)}
+.bpc-n{flex:1;min-width:0;font-size:14.5px;color:#eafcff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bpc-ed,.bpc-rm{opacity:0;cursor:pointer;font-family:'Share Tech Mono';font-size:12px;color:var(--mut2);padding:2px 5px;border-radius:3px;flex:0 0 auto;transition:.12s}
+.bpc:hover .bpc-ed,.bpc:hover .bpc-rm{opacity:.6}.bpc-ed:hover{opacity:1;color:var(--cy);background:rgba(103,247,255,.12)}.bpc-rm:hover{opacity:1;color:var(--red);background:rgba(255,109,134,.12)}
+.bpc-bar{height:8px;background:rgba(120,200,255,.08);border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-bottom:9px}
+.bpc-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cy2),var(--cy));box-shadow:0 0 8px rgba(120,200,255,.5);transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.bpc[data-status=done] .bpc-bar i{background:linear-gradient(90deg,#17b85f,var(--teal))}
+.bpc-f{display:flex;align-items:center;justify-content:space-between;font-family:'Share Tech Mono';font-size:12px}
+.bpc-pg{color:var(--cy);font-size:15px}.bpc[data-status=hold] .bpc-pg{color:var(--mut)}.bpc-up{color:var(--mut2)}
+.bpc-desc{margin-top:9px;font-size:12px;color:var(--mut);line-height:1.4;border-top:1px solid rgba(120,200,255,.08);padding-top:8px}
 @media(max-width:1100px){.row,.row.lead3,.row.g3{grid-template-columns:1fr}.kpis{flex-wrap:wrap;overflow-x:visible}.kpis .kpi{flex:1 0 140px}}
 @media(max-width:900px){.app{flex-direction:column}.rail{width:auto;border-right:0;border-bottom:1px solid var(--line)}.feed{column-count:1}.rbar .tele,.wave{display:none}}
 </style>
@@ -149,6 +187,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 <div class="app">
   <aside class="rail">
     <div class="railhead" data-t="projects">PROJECTS</div>
+    <button class="newprojbtn" id="addbtn">＋ <span data-t="newproj">새 프로젝트</span></button>
     <div class="rtotal"><div class="rtot"><div class="k" data-t="repos">REPOS</div><div class="v mono" id="totProj">—</div></div><div class="rtot"><div class="k" data-t="commits">COMMITS</div><div class="v mono" id="totCommits">—</div></div></div>
     <div id="projlist"></div>
   </aside>
@@ -166,8 +205,10 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
       </div>
     </div>
     <div id="overview" class="ovwrap" style="display:none">
+      <div class="ovsub"><span data-t="ov_board">내 프로젝트</span><span class="bpcount" id="bpcount"></span><span class="ln"></span><button class="miniadd" id="addbtn2">＋ <span data-t="newproj">새 프로젝트</span></button></div>
+      <div class="bpgrid" id="bpgrid"></div>
       <div class="ovtot" id="ovtot"></div>
-      <div class="ovsub"><span data-t="ov_managed">MANAGED PROJECTS</span><span class="ln"></span></div>
+      <div class="ovsub"><span data-t="ov_managed2">GIT 프로젝트 (자동 감지)</span><span class="ln"></span></div>
       <div class="ovgrid" id="ovgrid"></div>
       <div class="ovsub" id="ovothhd" style="display:none"><span data-t="ov_other">OTHER REPOS</span><span class="ln"></span></div>
       <div class="ovoth" id="ovoth"></div>
@@ -215,12 +256,31 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
     </div>
   </div>
 </div>
+<div id="modal" class="modal" style="display:none"><div class="modalbox">
+  <h3 class="orb" id="m_title">＋ 새 프로젝트</h3>
+  <label><span data-t="m_name">이름</span> *<input id="m_name" placeholder="프로젝트 이름"></label>
+  <label><span data-t="m_desc">한 줄 설명</span><input id="m_desc" placeholder="(선택) 무엇을 하는 프로젝트인지"></label>
+  <div class="mrow">
+    <label><span data-t="m_status">상태</span>
+      <select id="m_status">
+        <option value="idea">기획</option>
+        <option value="active" selected>진행</option>
+        <option value="done">완료</option>
+        <option value="hold">보류</option>
+      </select>
+    </label>
+    <label><span data-t="m_progress">진척도 %</span><input id="m_progress" type="number" min="0" max="100" placeholder="0"></label>
+  </div>
+  <label><span data-t="m_updated">최근 활동</span><input id="m_updated" placeholder="(선택) 어제 / 10월 19일"></label>
+  <div class="merr" id="m_err"></div>
+  <div class="mbtns"><button class="sbtn" id="m_cancel" data-t="m_cancel">취소</button><button class="btn" id="m_save"><span data-t="m_save">저장</span></button></div>
+</div></div>
 <script>
 const THEMES={cyan:['#67f7ff','#20c4e8','#8ea2ff'],amber:['#ffcf5a','#e0952a','#ffd98a'],matrix:['#53ff9b','#17b85f','#9affc6'],magenta:['#ff79d0','#d13a92','#ffabe0']};
 const TORDER=['cyan','amber','matrix','magenta'];let curTheme='cyan';
 const PAL=['#53ff9b','#67f7ff','#ffd24a','#ff79d0','#8ea2ff','#ff6d86','#20c4e8','#ffcf5a'];
-const T={en:{},ko:{projects:'프로젝트',repos:'리포',commits:'커밋',theme:'테마',refresh:'갱신',t_milestones:'마일스톤',t_phases:'단계(Phase)',t_features:'기능별 상태',t_commits:'최근 커밋',t_log:'이벤트 로그',t_radar:'커밋 레이더',t_activity:'커밋 활동 · 14일',t_work:'작업 분포',t_branches:'브랜치',t_recs:'추천 액션',t_inprog:'진행 중',t_agents:'AI 에이전트',t_code:'코드 구성',t_modules:'모듈 구성',t_contrib:'기여자',t_stack:'기술 스택',t_screens:'UI · 화면',t_docs:'기획 · 문서',overview:'종합',ov_managed:'관리 중인 프로젝트',ov_other:'기타 리포',ov_projects:'프로젝트',ov_commits:'총 커밋',ov_progress:'평균 진행률',ov_feat:'기능 현황',ov_agents:'가동 에이전트',ms_short:'마일스톤',wip_short:'진행중',last_short:'최근',done_k:'완료',wip_k:'진행',todo_k:'대기'},
-vi:{projects:'Dự án',repos:'Kho',commits:'Commit',theme:'Giao diện',refresh:'Làm mới',t_milestones:'Cột mốc',t_phases:'Giai đoạn',t_features:'Trạng thái tính năng',t_commits:'Commit gần đây',t_log:'Nhật ký sự kiện',t_radar:'Radar commit',t_activity:'Hoạt động commit · 14 ngày',t_work:'Phân bố công việc',t_branches:'Nhánh',t_recs:'Đề xuất',t_inprog:'Đang làm',t_agents:'AI Agents',t_code:'Thành phần mã',t_modules:'Cấu trúc module',t_contrib:'Đóng góp',t_stack:'Công nghệ',t_screens:'Màn hình',t_docs:'Tài liệu',overview:'Tổng hợp',ov_managed:'Dự án đang quản lý',ov_other:'Kho khác',ov_projects:'Dự án',ov_commits:'Tổng commit',ov_progress:'Tiến độ TB',ov_feat:'Tính năng',ov_agents:'Agent đang chạy',ms_short:'Cột mốc',wip_short:'Đang làm',last_short:'Gần đây',done_k:'Xong',wip_k:'Đang',todo_k:'Chờ'}};
+const T={en:{ov_board:'My Projects',ov_managed2:'Git projects (auto)',newproj:'New project',m_name:'Name',m_desc:'One-line description',m_status:'Status',m_progress:'Progress %',m_updated:'Last activity',m_cancel:'Cancel',m_save:'Save',bp_empty:'No projects yet · add with ＋ New project',st_idea:'Idea',st_active:'Active',st_done:'Done',st_hold:'Hold'},ko:{projects:'프로젝트',repos:'리포',commits:'커밋',theme:'테마',refresh:'갱신',t_milestones:'마일스톤',t_phases:'단계(Phase)',t_features:'기능별 상태',t_commits:'최근 커밋',t_log:'이벤트 로그',t_radar:'커밋 레이더',t_activity:'커밋 활동 · 14일',t_work:'작업 분포',t_branches:'브랜치',t_recs:'추천 액션',t_inprog:'진행 중',t_agents:'AI 에이전트',t_code:'코드 구성',t_modules:'모듈 구성',t_contrib:'기여자',t_stack:'기술 스택',t_screens:'UI · 화면',t_docs:'기획 · 문서',overview:'종합',ov_managed:'관리 중인 프로젝트',ov_other:'기타 리포',ov_projects:'프로젝트',ov_commits:'총 커밋',ov_progress:'평균 진행률',ov_feat:'기능 현황',ov_agents:'가동 에이전트',ms_short:'마일스톤',wip_short:'진행중',last_short:'최근',done_k:'완료',wip_k:'진행',todo_k:'대기',ov_board:'내 프로젝트',ov_managed2:'GIT 프로젝트 (자동 감지)',newproj:'새 프로젝트',m_name:'이름',m_desc:'한 줄 설명',m_status:'상태',m_progress:'진척도 %',m_updated:'최근 활동',m_cancel:'취소',m_save:'저장',bp_empty:'프로젝트가 없습니다 · ＋ 새 프로젝트로 추가하세요',st_idea:'기획',st_active:'진행',st_done:'완료',st_hold:'보류'},
+vi:{projects:'Dự án',repos:'Kho',commits:'Commit',theme:'Giao diện',refresh:'Làm mới',t_milestones:'Cột mốc',t_phases:'Giai đoạn',t_features:'Trạng thái tính năng',t_commits:'Commit gần đây',t_log:'Nhật ký sự kiện',t_radar:'Radar commit',t_activity:'Hoạt động commit · 14 ngày',t_work:'Phân bố công việc',t_branches:'Nhánh',t_recs:'Đề xuất',t_inprog:'Đang làm',t_agents:'AI Agents',t_code:'Thành phần mã',t_modules:'Cấu trúc module',t_contrib:'Đóng góp',t_stack:'Công nghệ',t_screens:'Màn hình',t_docs:'Tài liệu',overview:'Tổng hợp',ov_managed:'Dự án đang quản lý',ov_other:'Kho khác',ov_projects:'Dự án',ov_commits:'Tổng commit',ov_progress:'Tiến độ TB',ov_feat:'Tính năng',ov_agents:'Agent đang chạy',ms_short:'Cột mốc',wip_short:'Đang làm',last_short:'Gần đây',done_k:'Xong',wip_k:'Đang',todo_k:'Chờ',ov_board:'Dự án của tôi',ov_managed2:'Dự án Git (tự động)',newproj:'Dự án mới',m_name:'Tên',m_desc:'Mô tả ngắn',m_status:'Trạng thái',m_progress:'Tiến độ %',m_updated:'Hoạt động gần đây',m_cancel:'Hủy',m_save:'Lưu',bp_empty:'Chưa có dự án · thêm bằng ＋ Dự án mới',st_idea:'Ý tưởng',st_active:'Đang làm',st_done:'Xong',st_hold:'Tạm dừng'}};
 const KPI={ko:{'Progress':'진행','Milestones':'마일스톤','Total commits':'총 커밋','Branches':'브랜치','Contributors':'기여자','Pages/views':'페이지','DB tables':'DB 테이블','Tracked files':'추적 파일','TODO / FIXME':'TODO/FIXME','Last activity':'최근 활동'},
 vi:{'Progress':'Tiến độ','Milestones':'Cột mốc','Total commits':'Tổng commit','Branches':'Nhánh','Contributors':'Đóng góp','Pages/views':'Trang','DB tables':'Bảng DB','Tracked files':'Tệp','TODO / FIXME':'TODO/FIXME','Last activity':'Gần đây'}};
 const LANGS=['ko','en','vi'];let lang=localStorage.getItem('mc_lang')||'ko';
@@ -231,7 +291,7 @@ function colorFor(a){return a?PAL[Math.abs([...a].reduce((s,ch)=>s+ch.charCodeAt
 function barsHTML(list,col){const L=list||[],mx=Math.max(1,...L.map(x=>x.v));return L.length?L.map(x=>`<div class="b"><div class="bl"><span class="bn">${x.n}</span><span class="bv">${x.v}</span></div><div class="track"><div class="fill" data-w="${Math.round(x.v/mx*100)}" style="background:linear-gradient(90deg,${hexA(col,.55)},${col})"></div></div></div>`).join(''):'<div style="color:var(--mut);font-size:13px">—</div>';}
 function tr(k){return (T[lang]&&T[lang][k])||k;}
 function kpiL(k){return (lang!=='en'&&KPI[lang]&&KPI[lang][k])||k;}
-function applyLang(){document.querySelectorAll('[data-t]').forEach(n=>{const k=n.dataset.t;const v=tr(k);if(v)n.textContent=v;});el('langlbl').textContent=lang.toUpperCase();if(view==='overview'&&lastO)renderOverview(lastO);else if(lastD)render(lastD);}
+function applyLang(){document.querySelectorAll('[data-t]').forEach(n=>{const k=n.dataset.t;const v=tr(k);if(v)n.textContent=v;});el('langlbl').textContent=lang.toUpperCase();if(view==='overview'){if(lastO)renderOverview(lastO);loadBoard();}else if(lastD)render(lastD);}
 let projects=[],curP=null,logTimer=null;
 async function loadProjects(){try{const d=await(await fetch('/api/projects',{cache:'no-store'})).json();projects=d.projects||[];el('totProj').textContent=(d.totals&&d.totals.projects)||projects.length;el('totCommits').textContent=((d.totals&&d.totals.commits)||0).toLocaleString();renderRail();if(projects.length){if(!curP)curP=projects[0].id;load();}}catch(e){el('totProj').textContent='ERR';}}
 function renderRail(){el('projlist').innerHTML=projects.map(p=>`<div class="proj ${p.id===curP?'sel':''}" data-id="${encodeURIComponent(p.id)}"><span class="pdot ${p.configured?'cfg':''}"></span><div class="pmeta"><div class="pn">${p.name}</div><div class="psub">${p.branch||p.id.split('/').slice(-1)[0]}</div></div><span class="pc">${(p.commits||0)}</span></div>`).join('');document.querySelectorAll('.proj').forEach(n=>n.onclick=()=>{curP=decodeURIComponent(n.dataset.id);renderRail();load();});}
@@ -294,7 +354,7 @@ function render(D){
 async function load(){if(!curP)return;const b=el('refresh');b.classList.add('busy');try{const D=await(await fetch('/api/status?p='+encodeURIComponent(curP),{cache:'no-store'})).json();if(D.error)throw 0;render(D);}catch(e){el('asof').textContent='FETCH FAILED';}finally{b.classList.remove('busy');}}
 let view='single',lastO=null;
 function setView(v){view=v;el('single').style.display=v==='single'?'':'none';el('overview').style.display=v==='overview'?'':'none';el('ovbtn').classList.toggle('on',v==='overview');if(v==='overview')loadOverview();else if(lastD)render(lastD);}
-async function loadOverview(){const b=el('refresh');b.classList.add('busy');try{const O=await(await fetch('/api/overview',{cache:'no-store'})).json();if(O.error)throw 0;renderOverview(O);}catch(e){el('asof').textContent='FETCH FAILED';}finally{b.classList.remove('busy');}}
+async function loadOverview(){const b=el('refresh');b.classList.add('busy');try{const O=await(await fetch('/api/overview',{cache:'no-store'})).json();if(O.error)throw 0;renderOverview(O);loadBoard();}catch(e){el('asof').textContent='FETCH FAILED';}finally{b.classList.remove('busy');}}
 function renderOverview(O){
   lastO=O;if(O.theme)setTheme(O.theme);
   el('pname').textContent=tr('overview').toUpperCase();el('ptag').textContent='ALL PROJECTS · DEVHUD';
@@ -329,6 +389,46 @@ function renderOverview(O){
 }
 el('ovbtn').addEventListener('click',()=>setView(view==='single'?'overview':'single'));
 el('refresh').addEventListener('click',()=>{view==='overview'?loadOverview():load();});
+// ---- My Projects board ----
+const ST_KEY={idea:'st_idea',active:'st_active',done:'st_done',hold:'st_hold'};
+let boardItems=[];
+async function loadBoard(){try{const d=await(await fetch('/api/my-projects',{cache:'no-store'})).json();boardItems=d.projects||[];renderBoard(d);}catch(e){}}
+function esc(s){return (s||'').replace(/</g,'&lt;');}
+function renderBoard(d){
+  const items=d.projects||[],t=d.totals||{};
+  el('bpcount').textContent=items.length?`  ${items.length} · ${tr('st_active')} ${t.active||0} · ${tr('st_done')} ${t.done||0} · ${tr('ov_progress')} ${t.avgProgress||0}%`:'';
+  el('bpgrid').innerHTML=items.length?items.map(p=>{
+    const pr=Math.max(0,Math.min(100,p.progress||0));
+    return `<div class="bpc" data-id="${p.id}" data-status="${p.status||'active'}">
+      <div class="bpc-h"><span class="bpc-st">${tr(ST_KEY[p.status]||'st_active')}</span><span class="bpc-n" title="${esc(p.name)}">${esc(p.name)}</span><span class="bpc-ed" title="수정">✎</span><span class="bpc-rm" title="삭제">✕</span></div>
+      <div class="bpc-bar"><i data-w="${pr}"></i></div>
+      <div class="bpc-f"><span class="bpc-pg">${pr}%</span><span class="bpc-up">${esc(p.updated)}</span></div>
+      ${p.desc?`<div class="bpc-desc">${esc(p.desc)}</div>`:''}
+    </div>`;}).join(''):`<div style="color:var(--mut);font-size:14px;padding:6px 2px">${tr('bp_empty')}</div>`;
+  document.querySelectorAll('.bpc-ed').forEach(n=>n.onclick=e=>{e.stopPropagation();openEdit(boardItems.find(x=>x.id===n.closest('.bpc').dataset.id));});
+  document.querySelectorAll('.bpc-rm').forEach(n=>n.onclick=e=>{e.stopPropagation();const c=n.closest('.bpc');removeBoard(c.dataset.id,c.querySelector('.bpc-n').textContent);});
+  document.querySelectorAll('.bpc').forEach(n=>n.onclick=()=>openEdit(boardItems.find(x=>x.id===n.dataset.id)));
+  requestAnimationFrame(()=>document.querySelectorAll('.bpc-bar i').forEach(f=>f.style.width=f.dataset.w+'%'));
+}
+let editingId=null;
+function mset(id,v){el(id).value=(v==null?'':v);}
+function openAdd(){editingId=null;el('m_title').textContent='＋ '+tr('newproj');mset('m_name','');mset('m_desc','');el('m_status').value='active';mset('m_progress','');mset('m_updated','');el('m_err').textContent='';el('modal').style.display='flex';el('m_name').focus();}
+function openEdit(p){if(!p)return;editingId=p.id;el('m_title').textContent='✎ '+p.name;mset('m_name',p.name);mset('m_desc',p.desc);el('m_status').value=p.status||'active';mset('m_progress',p.progress||0);mset('m_updated',p.updated);el('m_err').textContent='';el('modal').style.display='flex';el('m_name').focus();}
+function closeModal(){el('modal').style.display='none';}
+async function saveBoard(){
+  const name=el('m_name').value.trim();if(!name){el('m_err').textContent=(lang==='en'?'Name is required':lang==='vi'?'Cần có tên':'이름을 입력하세요');return;}
+  const payload={name,desc:el('m_desc').value.trim(),status:el('m_status').value,progress:parseInt(el('m_progress').value||'0',10)||0,updated:el('m_updated').value.trim()};
+  const url=editingId?'/api/update-project':'/api/add-project';if(editingId)payload.id=editingId;
+  const b=el('m_save');b.classList.add('busy');
+  try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok||d.error){el('m_err').textContent=d.error||'저장 실패';return;}closeModal();loadBoard();}catch(e){el('m_err').textContent='서버 오류';}finally{b.classList.remove('busy');}
+}
+async function removeBoard(id,name){if(!confirm('"'+name+'" '+(lang==='en'?'Remove this project?':'삭제할까요?')))return;try{const r=await fetch('/api/remove-project',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});const d=await r.json();if(!r.ok||d.error){alert(d.error||'삭제 실패');return;}loadBoard();}catch(e){alert('서버 오류');}}
+el('addbtn').addEventListener('click',()=>{if(view!=='overview')setView('overview');openAdd();});
+el('addbtn2').addEventListener('click',openAdd);
+el('m_cancel').addEventListener('click',closeModal);
+el('m_save').addEventListener('click',saveBoard);
+el('modal').addEventListener('click',e=>{if(e.target===el('modal'))closeModal();});
+document.addEventListener('keydown',e=>{if(el('modal').style.display==='flex'){if(e.key==='Escape')closeModal();if(e.key==='Enter'&&e.target.id!=='m_desc'&&e.target.tagName!=='SELECT')saveBoard();}});
 el('themebtn').addEventListener('click',()=>{const i=(TORDER.indexOf(curTheme)+1)%TORDER.length;setTheme(TORDER[i]);});
 el('langbtn').addEventListener('click',()=>{lang=LANGS[(LANGS.indexOf(lang)+1)%LANGS.length];localStorage.setItem('mc_lang',lang);applyLang();});
 function clock(){const d=new Date();el('clk').textContent=d.toLocaleTimeString(undefined,{hour12:false});el('dte').textContent=d.toLocaleDateString(undefined,{month:'2-digit',day:'2-digit',weekday:'short'});}clock();setInterval(clock,1000);

@@ -5,7 +5,7 @@ Lists all your git repos and shows each one's development status as a
 sci-fi HUD. Reads ONLY git structure / counts. Never reads .env, keys,
 tokens or secrets. Configure via config.json.
 """
-import json, os, re, subprocess, datetime, collections, urllib.parse
+import json, os, re, subprocess, datetime, collections, urllib.parse, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -97,6 +97,36 @@ def discover_projects():
 
 
 PROJECTS = discover_projects()
+
+# ---- "My Projects" board (local only): a curated list of non-git projects
+# (e.g. Claude.ai projects, business/ops work) with status + progress, kept in
+# my-projects.json next to this server. Writes bind to 127.0.0.1 only.
+_board_lock = threading.Lock()
+BOARD_PATH = os.path.join(HERE, "my-projects.json")
+STATUSES = ("idea", "active", "done", "hold")  # 기획 / 진행 / 완료 / 보류
+
+
+BOARD_SAMPLE = os.path.join(HERE, "my-projects.sample.json")
+
+
+def load_board():
+    for p in (BOARD_PATH, BOARD_SAMPLE):   # your private board, else the shipped sample
+        try:
+            with open(p, encoding="utf-8") as fh:
+                data = json.load(fh)
+            return data if isinstance(data, list) else data.get("projects", [])
+        except Exception:
+            continue
+    return []
+
+
+def save_board(items):
+    with open(BOARD_PATH, "w", encoding="utf-8") as fh:
+        json.dump(items, fh, ensure_ascii=False, indent=2)
+
+
+def _board_id():
+    return "mp_" + datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
 
 
 def find_project(pid):
@@ -426,6 +456,13 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, json.dumps(overview(), ensure_ascii=False), "application/json; charset=utf-8")
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if u.path == "/api/my-projects":
+            items = load_board()
+            tot = len(items)
+            act = sum(1 for it in items if it.get("status") == "active")
+            done = sum(1 for it in items if it.get("status") == "done")
+            avg = round(sum(int(it.get("progress") or 0) for it in items) / tot) if tot else 0
+            return self._send(200, json.dumps({"projects": items, "totals": {"total": tot, "active": act, "done": done, "avgProgress": avg}}, ensure_ascii=False), "application/json; charset=utf-8")
         if u.path == "/api/status":
             try:
                 proj = find_project(q.get("p", [None])[0])
@@ -441,6 +478,76 @@ class H(BaseHTTPRequestHandler):
             except Exception:
                 return self._send(404, "not found", "text/plain")
         self._send(404, "not found", "text/plain")
+
+    def do_POST(self):
+        # Local-only writes (server binds 127.0.0.1): manage the "My Projects" board.
+        u = urllib.parse.urlparse(self.path)
+        try:
+            ln = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(ln) or b"{}") if ln else {}
+        except Exception:
+            return self._send(400, json.dumps({"error": "bad request body"}), "application/json")
+
+        def err(code, msg):
+            return self._send(code, json.dumps({"error": msg}, ensure_ascii=False), "application/json; charset=utf-8")
+
+        def ok_json(d):
+            return self._send(200, json.dumps(d, ensure_ascii=False), "application/json; charset=utf-8")
+
+        def clean(it):
+            name = (it.get("name") or "").strip()
+            st = it.get("status") if it.get("status") in STATUSES else "active"
+            try:
+                pr = max(0, min(100, int(it.get("progress") or 0)))
+            except Exception:
+                pr = 0
+            return {
+                "name": name,
+                "desc": (it.get("desc") or "").strip(),
+                "status": st,
+                "progress": pr,
+                "updated": (it.get("updated") or "").strip(),
+                "tag": (it.get("tag") or "").strip(),
+            }
+
+        if u.path == "/api/add-project":
+            ent = clean(body)
+            if not ent["name"]:
+                return err(400, "이름을 입력하세요")
+            ent["id"] = _board_id()
+            with _board_lock:
+                items = load_board()
+                items.insert(0, ent)
+                save_board(items)
+            return ok_json({"ok": True, "id": ent["id"]})
+
+        if u.path == "/api/update-project":
+            pid = (body.get("id") or "").strip()
+            with _board_lock:
+                items = load_board()
+                found = False
+                for it in items:
+                    if it.get("id") == pid:
+                        it.update({k: v for k, v in clean(body).items()})
+                        it["id"] = pid
+                        found = True
+                        break
+                if not found:
+                    return err(404, "프로젝트를 찾을 수 없습니다")
+                save_board(items)
+            return ok_json({"ok": True})
+
+        if u.path == "/api/remove-project":
+            pid = (body.get("id") or "").strip()
+            with _board_lock:
+                items = load_board()
+                kept = [it for it in items if it.get("id") != pid]
+                if len(kept) == len(items):
+                    return err(404, "프로젝트를 찾을 수 없습니다")
+                save_board(kept)
+            return ok_json({"ok": True})
+
+        return err(404, "not found")
 
     def log_message(self, *a):
         pass

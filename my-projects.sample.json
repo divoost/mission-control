@@ -1,0 +1,10 @@
+[
+  { "id": "s1", "name": "Web Dashboard", "desc": "Analytics & campaign UI", "status": "active", "progress": 67, "updated": "yesterday", "tag": "" },
+  { "id": "s2", "name": "Payments API", "desc": "Charges, refunds, webhooks", "status": "active", "progress": 40, "updated": "2 days ago", "tag": "" },
+  { "id": "s3", "name": "Mobile App", "desc": "RN app — feed & push", "status": "active", "progress": 35, "updated": "today", "tag": "" },
+  { "id": "s4", "name": "Design System", "desc": "Tokens & components", "status": "active", "progress": 72, "updated": "3 days ago", "tag": "" },
+  { "id": "s5", "name": "Docs Portal", "desc": "Guides & API reference", "status": "active", "progress": 55, "updated": "last week", "tag": "" },
+  { "id": "s6", "name": "Marketing Site", "desc": "Landing + blog", "status": "done", "progress": 100, "updated": "Oct 2", "tag": "" },
+  { "id": "s7", "name": "Data Pipeline", "desc": "ETL + warehouse", "status": "hold", "progress": 20, "updated": "Sep 18", "tag": "" },
+  { "id": "s8", "name": "AI Assistant", "desc": "Internal copilot", "status": "idea", "progress": 5, "updated": "Sep 9", "tag": "" }
+]
