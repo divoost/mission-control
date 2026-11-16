@@ -5,7 +5,7 @@ Lists all your git repos and shows each one's development status as a
 sci-fi HUD. Reads ONLY git structure / counts. Never reads .env, keys,
 tokens or secrets. Configure via config.json.
 """
-import json, os, re, subprocess, datetime, collections, urllib.parse, threading, math
+import json, os, re, subprocess, datetime, collections, urllib.parse, urllib.request, urllib.error, threading, math, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -597,6 +597,87 @@ def claude_usage():
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 
+# ---- Anthropic API usage/cost (official Admin report; key stays local) ----
+_apiusage_cache = {"ts": 0, "data": None}
+
+
+def _admin_key():
+    # Admin key is never committed: read from env or the git-ignored config.json.
+    return (os.environ.get("ANTHROPIC_ADMIN_KEY") or CFG.get("anthropicAdminKey") or "").strip()
+
+
+def _sum_tokens(obj, acc):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, (int, float)) and k.endswith("_tokens"):
+                if "output" in k:
+                    acc["output"] += v
+                elif "cache" in k:
+                    acc["cache"] += v
+                elif "input" in k:
+                    acc["input"] += v
+            else:
+                _sum_tokens(v, acc)
+    elif isinstance(obj, list):
+        for x in obj:
+            _sum_tokens(x, acc)
+
+
+def _sum_cost(obj, acc):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ("amount", "amount_cents", "cost") and isinstance(v, (int, float, str)):
+                try:
+                    acc[0] += float(v)
+                except Exception:
+                    pass
+            else:
+                _sum_cost(v, acc)
+    elif isinstance(obj, list):
+        for x in obj:
+            _sum_cost(x, acc)
+
+
+def _anthropic_get(path, params, key):
+    url = "https://api.anthropic.com" + path + "?" + urllib.parse.urlencode(params, doseq=True)
+    req = urllib.request.Request(url, headers={"x-api-key": key, "anthropic-version": "2023-06-01"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def api_usage():
+    key = _admin_key()
+    if not key:
+        return {"configured": False}
+    now = time.time()
+    if _apiusage_cache["data"] and now - _apiusage_cache["ts"] < 300:
+        return _apiusage_cache["data"]
+    start = (datetime.date.today() - datetime.timedelta(days=7)).isoformat() + "T00:00:00Z"
+    out = {"configured": True, "input": 0, "output": 0, "cache": 0, "cost": None,
+           "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    try:
+        acc = {"input": 0, "output": 0, "cache": 0}
+        u = _anthropic_get("/v1/organizations/usage_report/messages",
+                           {"starting_at": start, "bucket_width": "1d", "limit": 31}, key)
+        _sum_tokens(u, acc)
+        out.update(acc)
+        try:
+            c = _anthropic_get("/v1/organizations/cost_report",
+                               {"starting_at": start, "bucket_width": "1d", "limit": 31}, key)
+            cacc = [0.0]
+            _sum_cost(c, cacc)
+            out["cost"] = round(cacc[0] / 100.0, 2)  # amounts are in cents
+        except Exception:
+            out["cost"] = None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "ignore")[:160]
+        out = {"configured": True, "error": "HTTP %s · %s" % (e.code, body)}
+    except Exception as e:
+        out = {"configured": True, "error": str(e)[:160]}
+    _apiusage_cache.update(ts=now, data=out)
+    return out
+
+
 class H(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype):
         self.send_response(code)
@@ -613,6 +694,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps(overview(), ensure_ascii=False), "application/json; charset=utf-8")
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if u.path == "/api/api-usage":
+            try:
+                return self._send(200, json.dumps(api_usage(), ensure_ascii=False), "application/json; charset=utf-8")
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/claude-usage":
