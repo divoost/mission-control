@@ -343,8 +343,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
         <div class="ovgrid" id="ovgrid"></div>
         <div class="ovsublbl"><span data-t="cu_title">Claude Code · 실측 토큰 사용량</span> <span class="realbadge" data-t="cu_real">REAL · LOCAL</span></div>
         <div class="hud cu"><div class="cu-tot" id="cuTot"></div><div class="cu-list" id="cuList"></div></div>
-        <div class="ovsublbl"><span data-t="au_title">Anthropic API · 토큰 · 비용</span> <span class="realbadge" id="auBadge" data-t="au_real">REAL · API</span></div>
-        <div class="hud cu" id="auPanel"></div>
+        <div class="ovsublbl" id="auHd" style="display:none"><span data-t="au_title">Anthropic API · 토큰 · 비용</span> <span class="realbadge" id="auBadge" data-t="au_real">REAL · API</span></div>
+        <div class="hud cu" id="auPanel" style="display:none"></div>
       </section>
       <!-- SECTION 2 · Other repos (indigo) -->
       <section class="ovsec oth" id="othSec">
@@ -602,9 +602,10 @@ function fmtTok(n){n=+n||0;if(n>=1e9)return (n/1e9).toFixed(2)+'B';if(n>=1e6)ret
 async function loadUsage(){try{const U=await(await fetch('/api/claude-usage',{cache:'no-store'})).json();renderUsage(U);}catch(e){}}
 async function loadApiUsage(){try{const A=await(await fetch('/api/api-usage',{cache:'no-store'})).json();renderApiUsage(A);}catch(e){}}
 function renderApiUsage(A){
-  const el0=el('auPanel');if(!el0)return;const bd=el('auBadge');
-  if(!A||!A.configured){if(bd){bd.textContent=tr('au_off');bd.classList.add('man');}
-    el0.innerHTML=`<div class="au-setup"><div class="au-h">${tr('au_setup')}</div><ol class="au-ol"><li>${tr('au_s1')}</li><li>${tr('au_s2')} <code>config.json</code> → <code>"anthropicAdminKey": "sk-ant-admin..."</code></li><li>${tr('au_s3')}</li></ol><div class="au-note">${tr('au_safe')}</div></div>`;return;}
+  const el0=el('auPanel'),hd=el('auHd');if(!el0)return;const bd=el('auBadge');
+  if(!A||!A.configured){ // opt-in: hide the whole panel unless a key is configured
+    if(hd)hd.style.display='none';el0.style.display='none';el0.innerHTML='';return;}
+  if(hd)hd.style.display='';el0.style.display='';
   if(bd){bd.textContent='REAL · API';bd.classList.remove('man');}
   if(A.error){el0.innerHTML=`<div class="au-setup"><div class="au-h" style="color:var(--red)">API error</div><div class="cur-d">${esc(A.error)}</div></div>`;return;}
   const tiles=[['cu_out',fmtTok(A.output),'#2bffb0'],['cu_in',fmtTok(A.input),'#67f7ff'],['cu_cache',fmtTok(A.cache),'#8ea2ff'],['au_cost',A.cost==null?'—':('$'+A.cost.toLocaleString()),'#ffd24a']];
