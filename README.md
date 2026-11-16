@@ -5,7 +5,7 @@
 **A sci‑fi mission‑control HUD for your project's live development status.**
 Point it at any git repo. See milestones, velocity, work distribution, branches and recent commits as a cinematic heads‑up display. 100% local, zero dependencies, no secrets.
 
-![Mission Control DevHUD](docs/screenshot.png)
+![Mission Control — DevHUD](docs/demo.gif)
 
 </div>
 
