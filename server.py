@@ -537,6 +537,66 @@ def overview():
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 
+# ---- real Claude Code usage (local session logs, token counts) ----
+import glob as _glob
+CLAUDE_PROJECTS = os.path.expanduser("~/.claude/projects")
+_usage_cache = {}   # filepath -> (mtime, {in,out,cache,msgs,last})
+
+
+def _scan_usage_file(fp):
+    agg = {"in": 0, "out": 0, "cache": 0, "msgs": 0}
+    try:
+        with open(fp, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if '"usage"' not in line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except Exception:
+                    continue
+                u = (o.get("message") or {}).get("usage") or o.get("usage")
+                if isinstance(u, dict):
+                    agg["in"] += u.get("input_tokens", 0)
+                    agg["out"] += u.get("output_tokens", 0)
+                    agg["cache"] += u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0)
+                    agg["msgs"] += 1
+    except Exception:
+        pass
+    return agg
+
+
+def claude_usage():
+    items, tin, tout, tcache, tsess = [], 0, 0, 0, 0
+    if os.path.isdir(CLAUDE_PROJECTS):
+        for d in sorted(_glob.glob(os.path.join(CLAUDE_PROJECTS, "*"))):
+            if not os.path.isdir(d):
+                continue
+            files = _glob.glob(os.path.join(d, "*.jsonl"))
+            if not files:
+                continue
+            ai = ao = ac = am = 0
+            last = 0.0
+            for fp in files:
+                mt = os.path.getmtime(fp)
+                c = _usage_cache.get(fp)
+                if not c or c[0] != mt:
+                    c = (mt, _scan_usage_file(fp))
+                    _usage_cache[fp] = c
+                a = c[1]
+                ai += a["in"]; ao += a["out"]; ac += a["cache"]; am += a["msgs"]
+                last = max(last, mt)
+            name = os.path.basename(d)
+            label = (name.replace("-Users-" + os.path.basename(os.path.expanduser("~")), "~").replace("-", "/")) or name
+            items.append({"name": label, "sessions": len(files), "msgs": am,
+                          "input": ai, "output": ao, "cache": ac,
+                          "last": datetime.datetime.fromtimestamp(last).strftime("%Y-%m-%d") if last else "-",
+                          "lastTs": last})
+            tin += ai; tout += ao; tcache += ac; tsess += len(files)
+    items.sort(key=lambda x: -x["lastTs"])
+    return {"projects": items, "totals": {"input": tin, "output": tout, "cache": tcache, "sessions": tsess, "projects": len(items)},
+            "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
 class H(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype):
         self.send_response(code)
@@ -553,6 +613,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps(overview(), ensure_ascii=False), "application/json; charset=utf-8")
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if u.path == "/api/claude-usage":
+            try:
+                return self._send(200, json.dumps(claude_usage(), ensure_ascii=False), "application/json; charset=utf-8")
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/my-projects":
