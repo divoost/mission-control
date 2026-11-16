@@ -50,12 +50,15 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .wave{width:130px;height:38px}
 .tele{font-size:12px;line-height:1.6}.tele div{color:var(--mut)}.tele b{color:var(--teal);font-family:'Share Tech Mono',monospace}.blink{animation:bl 1.3s steps(2) infinite}
 .clock .t{font-size:23px;color:#eafcff;text-shadow:0 0 14px rgba(142,162,255,.6)}.clock .d{font-size:11px;color:var(--mut)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 16px}
+.kpis{display:flex;gap:11px;margin:14px 0 16px;overflow-x:auto;padding-bottom:4px}
+.kpis .kpi{flex:1 0 128px;min-width:128px}
 .kpi{position:relative;padding:14px 16px;background:rgba(8,22,38,.5);border:1px solid var(--line);clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px))}
 .kpi .k{font-size:12px;color:var(--mut);letter-spacing:.04em}.kpi .v{font-size:31px;margin-top:3px;color:#eafcff;text-shadow:0 0 13px rgba(120,200,255,.4);line-height:1.05}.kpi .v small{font-size:14px;color:var(--mut)}
 .kpi .edge{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cy);box-shadow:var(--glow)}.kpi.ok .edge{background:var(--teal);box-shadow:0 0 11px var(--teal)}
-.cols{display:grid;grid-template-columns:1.08fr 1fr;gap:16px;align-items:start}
-.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.row{display:grid;gap:16px;margin-top:16px;align-items:start}
+.row.lead3{grid-template-columns:.78fr 1fr 1.05fr}
+.row.g3{grid-template-columns:1fr 1fr 1fr}
+.row>.hud{min-width:0}
 .gauge{position:relative;width:210px;height:210px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center}
 .gauge svg{width:210px;height:210px;filter:drop-shadow(0 0 8px rgba(120,200,255,.5))}
 .gcen{position:absolute;text-align:center}.gcen .big{font-size:50px;color:#eafcff;text-shadow:var(--glow);line-height:1}.gcen .lbl{font-size:12px;color:var(--cy);letter-spacing:.14em;margin-top:4px}
@@ -96,7 +99,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .log{height:290px;overflow:hidden;font-family:'Share Tech Mono';font-size:14px;line-height:1.85}.log div{color:var(--mut)}.log .ac{color:var(--teal)}.log .wc{color:var(--amber)}.log .cc{color:var(--cy)}
 .recs .rec{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(120,200,255,.08)}.recs .rec:last-child{border-bottom:0}.recs .rec b{color:#eafcff}.recs .rt{font-size:14px;line-height:1.4}.recs .pr{font-size:11px;color:var(--ind);font-family:'Share Tech Mono';letter-spacing:.1em;margin-top:3px}
 .foot{margin-top:16px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mut2);font-family:'Share Tech Mono'}
-@media(max-width:900px){.app{flex-direction:column}.rail{width:auto;border-right:0;border-bottom:1px solid var(--line)}.cols{grid-template-columns:1fr}.feed{column-count:1}.rbar .tele,.wave{display:none}}
+@media(max-width:1100px){.row,.row.lead3,.row.g3{grid-template-columns:1fr}.kpis{flex-wrap:wrap;overflow-x:visible}.kpis .kpi{flex:1 0 140px}}
+@media(max-width:900px){.app{flex-direction:column}.rail{width:auto;border-right:0;border-bottom:1px solid var(--line)}.feed{column-count:1}.rbar .tele,.wave{display:none}}
 </style>
 </head>
 <body>
@@ -120,29 +124,29 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
       </div>
     </div>
     <div class="kpis" id="kpis"></div>
-    <div class="cols">
-      <div class="col">
-        <div class="hud" data-panel="milestones"><h2><span data-t="t_milestones">Milestones</span><span class="sec">SEC-01</span></h2>
-          <div class="gauge"><svg viewBox="0 0 200 200">
-            <g class="spin-slow"><circle cx="100" cy="100" r="92" fill="none" stroke="rgba(120,200,255,.14)" stroke-width="1.5" stroke-dasharray="3 9"/></g>
-            <g class="spin-rev"><circle cx="100" cy="100" r="84" fill="none" stroke="rgba(142,162,255,.16)" stroke-width="1.5" stroke-dasharray="1.5 15"/></g>
-            <circle class="arc-bg" cx="100" cy="100" r="70"/><circle class="arc-fg" id="arc" cx="100" cy="100" r="70" transform="rotate(-90 100 100)"/>
-            <line class="tick" x1="100" y1="5" x2="100" y2="17"/><line class="tick" x1="100" y1="183" x2="100" y2="195"/><line class="tick" x1="5" y1="100" x2="17" y2="100"/><line class="tick" x1="183" y1="100" x2="195" y2="100"/></svg>
-            <div class="gcen"><div class="big mono" id="gp">—</div><div class="lbl" id="gm">—</div></div></div>
-          <div id="steps"></div></div>
-        <div class="hud" data-panel="phases"><h2><span data-t="t_phases">Phases</span><span class="sec">SEC-02</span></h2><div class="bars" id="phases"></div></div>
-        <div class="hud" data-panel="features"><h2><span data-t="t_features">Feature Status</span><span class="sec">SEC-03</span></h2><div class="ftop"><div class="fdonut" id="fdonut"></div><div class="fsum" id="fsum"></div></div><div class="fgrid" id="features"></div></div>
-        <div class="hud" data-panel="commits"><h2><span data-t="t_commits">Recent Commits</span><span class="sec">SEC-04</span></h2><div class="feed" id="feed"></div></div>
-      </div>
-      <div class="col">
-        <div class="hud" data-panel="log"><h2><span data-t="t_log">Event Log Stream</span><span class="sec">SEC-05</span></h2><div class="log" id="log"></div></div>
-        <div class="hud" data-panel="radar"><h2><span data-t="t_radar">Commit Radar</span><span class="sec">SEC-06</span></h2><div class="radar" id="radar"><div class="sweep"></div></div><div class="rlegend" id="rlegend"></div></div>
-        <div class="hud" data-panel="timeline"><h2><span data-t="t_activity">Commit Activity · 14d</span><span class="sec">SEC-07</span></h2><div class="spark" id="spark"></div><div class="sparkx" id="sparkx"></div></div>
-        <div class="hud" data-panel="areas"><h2><span data-t="t_work">Work Distribution</span><span class="sec">SEC-08</span></h2><div class="bars" id="areas"></div></div>
-        <div class="hud" data-panel="branches"><h2><span data-t="t_branches">Branches</span><span class="sec">SEC-09</span></h2><div id="branches"></div></div>
-        <div class="hud" data-panel="recs"><h2><span data-t="t_recs">Recommended Actions</span><span class="sec">SEC-10</span></h2><div class="recs" id="recs"></div></div>
-      </div>
+    <div class="row lead3">
+      <div class="hud" data-panel="milestones"><h2><span data-t="t_milestones">Milestones</span><span class="sec">SEC-01</span></h2>
+        <div class="gauge"><svg viewBox="0 0 200 200">
+          <g class="spin-slow"><circle cx="100" cy="100" r="92" fill="none" stroke="rgba(120,200,255,.14)" stroke-width="1.5" stroke-dasharray="3 9"/></g>
+          <g class="spin-rev"><circle cx="100" cy="100" r="84" fill="none" stroke="rgba(142,162,255,.16)" stroke-width="1.5" stroke-dasharray="1.5 15"/></g>
+          <circle class="arc-bg" cx="100" cy="100" r="70"/><circle class="arc-fg" id="arc" cx="100" cy="100" r="70" transform="rotate(-90 100 100)"/>
+          <line class="tick" x1="100" y1="5" x2="100" y2="17"/><line class="tick" x1="100" y1="183" x2="100" y2="195"/><line class="tick" x1="5" y1="100" x2="17" y2="100"/><line class="tick" x1="183" y1="100" x2="195" y2="100"/></svg>
+          <div class="gcen"><div class="big mono" id="gp">—</div><div class="lbl" id="gm">—</div></div></div>
+        <div id="steps"></div></div>
+      <div class="hud" data-panel="radar"><h2><span data-t="t_radar">Commit Radar</span><span class="sec">SEC-02</span></h2><div class="radar" id="radar"><div class="sweep"></div></div><div class="rlegend" id="rlegend"></div></div>
+      <div class="hud" data-panel="features"><h2><span data-t="t_features">Feature Status</span><span class="sec">SEC-03</span></h2><div class="ftop"><div class="fdonut" id="fdonut"></div><div class="fsum" id="fsum"></div></div><div class="fgrid" id="features"></div></div>
     </div>
+    <div class="row g3">
+      <div class="hud" data-panel="phases"><h2><span data-t="t_phases">Phases</span><span class="sec">SEC-04</span></h2><div class="bars" id="phases"></div></div>
+      <div class="hud" data-panel="timeline"><h2><span data-t="t_activity">Commit Activity · 14d</span><span class="sec">SEC-05</span></h2><div class="spark" id="spark"></div><div class="sparkx" id="sparkx"></div></div>
+      <div class="hud" data-panel="log"><h2><span data-t="t_log">Event Log Stream</span><span class="sec">SEC-06</span></h2><div class="log" id="log"></div></div>
+    </div>
+    <div class="row g3">
+      <div class="hud" data-panel="areas"><h2><span data-t="t_work">Work Distribution</span><span class="sec">SEC-07</span></h2><div class="bars" id="areas"></div></div>
+      <div class="hud" data-panel="branches"><h2><span data-t="t_branches">Branches</span><span class="sec">SEC-08</span></h2><div id="branches"></div></div>
+      <div class="hud" data-panel="recs"><h2><span data-t="t_recs">Recommended Actions</span><span class="sec">SEC-09</span></h2><div class="recs" id="recs"></div></div>
+    </div>
+    <div class="hud full" data-panel="commits"><h2><span data-t="t_commits">Recent Commits</span><span class="sec">SEC-10</span></h2><div class="feed" id="feed"></div></div>
     <div class="foot"><span id="asof">DATA AS OF —</span><span id="repoline">local git · no secrets</span></div>
   </div>
 </div>
