@@ -470,6 +470,21 @@ def overview_item(proj):
     phs = proj.get("phases") or []
     pavg = round(sum(p.get("v", 0) for p in phs) / len(phs)) if phs else None
     prog = round(done / total * 100) if total else pavg
+    # extra dev metrics (cheap-ish; only for configured projects)
+    files = [x for x in sh(repo, ["git", "ls-files"] + ps, timeout=8).splitlines() if x]
+    db = 0
+    for f in files:
+        fl = f.lower()
+        if fl.endswith(".sql"):
+            db += len(re.findall(r"(?im)^\s*create\s+table", _read(repo, f)))
+        elif fl.endswith(".prisma"):
+            db += len(re.findall(r"(?im)^\s*model\s", _read(repo, f)))
+    c7 = int(sh(repo, ["git", "rev-list", "--count", "--since=7.days", ref] + ps, timeout=8) or 0)
+    # 7-day daily commit sparkline
+    raw = sh(repo, ["git", "log", ref, "--since=7.days", "--date=format:%Y-%m-%d", "--pretty=%cd"] + ps, timeout=8)
+    cnt = collections.Counter(raw.splitlines())
+    today = datetime.date.today()
+    spark = [cnt.get((today - datetime.timedelta(days=i)).strftime("%Y-%m-%d"), 0) for i in range(6, -1, -1)]
     return {
         "id": pid_of(proj), "name": proj.get("name"), "tagline": proj.get("tagline") or "",
         "theme": proj.get("theme") or CFG.get("theme", "cyan"),
@@ -477,13 +492,15 @@ def overview_item(proj):
         "ms": {"done": done, "total": total},
         "feat": {"done": fd, "wip": fw, "todo": ftd},
         "agents": {"run": arun, "total": len(ags)},
-        "phases": phs,
+        "phases": phs, "db": db, "files": len(files), "commits7d": c7, "spark": spark,
     }
 
 
 def overview():
     cfg_items, others = [], []
     tot_c = prog_sum = prog_n = FD = FW = FT = ARUN = 0
+    DB = FILES = C7 = AG_TOT = 0
+    spark7 = [0, 0, 0, 0, 0, 0, 0]
     for p in PROJECTS:
         if p.get("configured"):
             it = overview_item(p)
@@ -496,6 +513,13 @@ def overview():
             FW += it["feat"]["wip"]
             FT += it["feat"]["todo"]
             ARUN += it["agents"]["run"]
+            AG_TOT += it["agents"]["total"]
+            DB += it.get("db", 0)
+            FILES += it.get("files", 0)
+            C7 += it.get("commits7d", 0)
+            for i, v in enumerate(it.get("spark", [])):
+                if i < 7:
+                    spark7[i] += v
         else:
             repo = p["repo"]
             sub = p.get("subpath")
@@ -506,7 +530,8 @@ def overview():
             others.append({"id": pid_of(p), "name": p["name"], "commits": c, "last": l})
     totals = {"projects": len(cfg_items), "repos": len(PROJECTS), "commits": tot_c,
               "avgProgress": round(prog_sum / prog_n) if prog_n else 0,
-              "feat": {"done": FD, "wip": FW, "todo": FT}, "agentsRun": ARUN}
+              "feat": {"done": FD, "wip": FW, "todo": FT}, "agentsRun": ARUN, "agentsTotal": AG_TOT,
+              "db": DB, "files": FILES, "commits7d": C7, "inProgress": FW, "spark7": spark7}
     return {"projects": cfg_items, "others": others, "totals": totals,
             "theme": CFG.get("theme", "cyan"),
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
