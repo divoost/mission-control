@@ -236,7 +236,8 @@ let projects=[],curP=null,logTimer=null;
 async function loadProjects(){try{const d=await(await fetch('/api/projects',{cache:'no-store'})).json();projects=d.projects||[];el('totProj').textContent=(d.totals&&d.totals.projects)||projects.length;el('totCommits').textContent=((d.totals&&d.totals.commits)||0).toLocaleString();renderRail();if(projects.length){if(!curP)curP=projects[0].id;load();}}catch(e){el('totProj').textContent='ERR';}}
 function renderRail(){el('projlist').innerHTML=projects.map(p=>`<div class="proj ${p.id===curP?'sel':''}" data-id="${encodeURIComponent(p.id)}"><span class="pdot ${p.configured?'cfg':''}"></span><div class="pmeta"><div class="pn">${p.name}</div><div class="psub">${p.branch||p.id.split('/').slice(-1)[0]}</div></div><span class="pc">${(p.commits||0)}</span></div>`).join('');document.querySelectorAll('.proj').forEach(n=>n.onclick=()=>{curP=decodeURIComponent(n.dataset.id);renderRail();load();});}
 function render(D){
-  lastD=D;setTheme(D.theme);el('pname').textContent=(D.project||'MISSION CONTROL').toUpperCase();el('ptag').textContent=D.tagline||'DEVHUD';el('refline').textContent=D.ref||'HEAD';el('repoline').textContent=(D.repo||'')+' · '+(D.ref||'HEAD')+' · no secrets';
+  lastD=D;setTheme(D.theme);el('repoline').textContent=(D.repo||'')+' · '+(D.ref||'HEAD')+' · no secrets';
+  if(view!=='overview'){el('pname').textContent=(D.project||'MISSION CONTROL').toUpperCase();el('ptag').textContent=D.tagline||'DEVHUD';el('refline').textContent=D.ref||'HEAD';}
   const P=D.panels||{};document.querySelectorAll('[data-panel]').forEach(n=>{n.style.display=(P[n.dataset.panel]===false)?'none':'';});
   const done=D.done,total=D.total,pct=total?Math.round(done/total*100):0;
   const kp=[{k:'Progress',v:total?pct+'<small>%</small>':'—',c:''},{k:'Milestones',v:total?done+'<small>/'+total+'</small>':'—',c:'ok'}].concat((D.gh||[]).map(g=>({k:g[0],v:g[1],c:''})));
@@ -274,7 +275,7 @@ function render(D){
   el('branches').innerHTML=(D.branches||[]).map((b,i)=>`<div class="brow ${i===0?'cur':''}"><span class="bn">${b.n}</span><span class="ba">${b.ago}</span></div>`).join('');
   el('recs').innerHTML=(D.recs||[]).map(r=>`<div class="rec"><div><div class="rt">${r.t}</div><div class="pr">${r.p||''}</div></div></div>`).join('')||'<div style="color:var(--mut);font-size:14px">—</div>';
   el('feed').innerHTML=(D.commits||[]).map(c=>`<div class="cm"><span class="sha">${c.sha}</span><span class="ago">${c.ago}</span><span class="msg">${(c.msg||'').replace(/</g,'&lt;')}</span></div>`).join('');
-  el('asof').textContent='DATA AS OF '+D.asOf;el('gm').textContent=total?done+' / '+total:'N/A';
+  if(view!=='overview')el('asof').textContent='DATA AS OF '+D.asOf;el('gm').textContent=total?done+' / '+total:'N/A';
   const rd=el('radar');rd.querySelectorAll('.ring,.cross,.blip').forEach(n=>n.remove());
   [56,116,180].forEach(s=>{const r=document.createElement('div');r.className='ring';r.style.cssText=`left:${(220-s)/2}px;top:${(220-s)/2}px;width:${s}px;height:${s}px`;rd.appendChild(r);});
   const cv=document.createElement('div');cv.className='cross';cv.style.cssText='left:109px;top:8px;width:1px;height:204px';rd.appendChild(cv);
