@@ -475,12 +475,36 @@ def overview_item(proj):
     # extra dev metrics (cheap-ish; only for configured projects)
     files = [x for x in sh(repo, ["git", "ls-files"] + ps, timeout=8).splitlines() if x]
     db = 0
+    db_names = []
     for f in files:
         fl = f.lower()
         if fl.endswith(".sql"):
-            db += len(re.findall(r"(?im)^\s*create\s+table", _read(repo, f)))
+            nm = re.findall(r"(?im)^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?[\"'`\[]?([A-Za-z0-9_\.]+)", _read(repo, f))
+            db += len(nm); db_names += [n.split(".")[-1] for n in nm]
         elif fl.endswith(".prisma"):
-            db += len(re.findall(r"(?im)^\s*model\s", _read(repo, f)))
+            nm = re.findall(r"(?im)^\s*model\s+([A-Za-z0-9_]+)", _read(repo, f))
+            db += len(nm); db_names += nm
+    # module structure (top-level dirs), file-type mix, screens, docs — real names for the dev log
+    basep = (sub.rstrip("/") + "/") if sub else ""
+    dirc = collections.Counter()
+    for f in files:
+        rel = f[len(basep):] if basep and f.startswith(basep) else f
+        dirc[rel.split("/")[0] if "/" in rel else "(root)"] += 1
+    dirs = [{"n": k, "v": v} for k, v in dirc.most_common(10)]
+    extc = collections.Counter(os.path.splitext(f)[1].lower().lstrip(".") or "other" for f in files)
+    langs = [{"n": k, "v": v} for k, v in extc.most_common(8)]
+    PGD = ("/pages/", "/app/", "/screens/", "/routes/", "/views/")
+    scr = []
+    for f in files:
+        lf = "/" + f.lower()
+        for d in PGD:
+            if d in lf:
+                seg = f.lower().split(d.strip("/") + "/", 1)[-1].split("/")[0]
+                seg = os.path.splitext(seg)[0]
+                if seg and seg not in ("index", "_app", "layout") and seg not in scr:
+                    scr.append(seg)
+                break
+    doc_names = [os.path.basename(f) for f in files if f.lower().endswith((".md", ".mdx"))][:12]
     c7 = int(sh(repo, ["git", "rev-list", "--count", "--since=7.days", ref] + ps, timeout=8) or 0)
     # 7-day daily commit sparkline
     raw = sh(repo, ["git", "log", ref, "--since=7.days", "--date=format:%Y-%m-%d", "--pretty=%cd"] + ps, timeout=8)
@@ -495,6 +519,8 @@ def overview_item(proj):
         "feat": {"done": fd, "wip": fw, "todo": ftd},
         "agents": {"run": arun, "total": len(ags)},
         "phases": phs, "db": db, "files": len(files), "commits7d": c7, "spark": spark,
+        "dbNames": db_names[:14], "dirs": dirs, "langs": langs,
+        "screens": scr[:14], "docNames": doc_names,
     }
 
 
@@ -534,7 +560,32 @@ def overview():
               "avgProgress": round(prog_sum / prog_n) if prog_n else 0,
               "feat": {"done": FD, "wip": FW, "todo": FT}, "agentsRun": ARUN, "agentsTotal": AG_TOT,
               "db": DB, "files": FILES, "commits7d": C7, "inProgress": FW, "spark7": spark7}
+    # real dev-artifact log lines (DB tables, module structure, screens, docs, stack) for the console stream
+    devlog = []
+    for it in cfg_items:
+        pn = it["name"]
+        for n in it.get("dbNames", []):
+            devlog.append({"k": "DB", "t": n, "p": pn})
+        for d in it.get("dirs", [])[:6]:
+            if d["n"] != "(root)":
+                devlog.append({"k": "DIR", "t": "%s/ · %d" % (d["n"], d["v"]), "p": pn})
+        for s in it.get("screens", [])[:8]:
+            devlog.append({"k": "SCREEN", "t": s, "p": pn})
+        for d in it.get("docNames", [])[:6]:
+            devlog.append({"k": "DOC", "t": d, "p": pn})
+        for l in it.get("langs", [])[:5]:
+            devlog.append({"k": "LANG", "t": "%s · %d" % (l["n"], l["v"]), "p": pn})
+        for f in (it.get("feat") and []):
+            pass
+    # per-ring breakdown so metric tiles can cycle project-by-project, then show the aggregate
+    metric_break = {
+        "db": [{"n": it["name"], "v": it.get("db", 0)} for it in cfg_items],
+        "c7": [{"n": it["name"], "v": it.get("commits7d", 0)} for it in cfg_items],
+        "wip": [{"n": it["name"], "v": it["feat"]["wip"]} for it in cfg_items],
+        "ag": [{"n": it["name"], "v": it["agents"]["run"]} for it in cfg_items],
+    }
     return {"projects": cfg_items, "others": others, "totals": totals,
+            "devlog": devlog, "metricBreak": metric_break,
             "theme": CFG.get("theme", "cyan"),
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
@@ -596,6 +647,185 @@ def claude_usage():
             tin += ai; tout += ao; tcache += ac; tsess += len(files)
     items.sort(key=lambda x: -x["lastTs"])
     return {"projects": items, "totals": {"input": tin, "output": tout, "cache": tcache, "sessions": tsess, "projects": len(items)},
+            "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
+# ---- real Claude Code activity (what's being worked on, from local logs) ----
+# Reads your own session logs on 127.0.0.1 only. Topic text can be hidden with
+# config "activityTopics": false (actions/files still show).
+_activity_cache = {}   # filepath -> (mtime, summary)
+_ACT_HASHTOOL = re.compile(r"^[0-9a-f]{12,}\s+toolu_")
+_ACT_SHOW_TOPICS = CFG.get("activityTopics", True)
+
+
+def _act_clean(txt):
+    if not isinstance(txt, str):
+        return ""
+    txt = re.sub(r"<pasted_content[^>]*>.*?</pasted_content>", " ", txt, flags=re.S)
+    txt = re.sub(r"<system-reminder>.*?</system-reminder>", " ", txt, flags=re.S)
+    txt = re.sub(r"<[^>]+>", " ", txt)
+    return re.sub(r"\s+", " ", txt).strip()
+
+
+_ACT_SKIP = ("Called the", "Result of", "This session is being continued",
+             "/login", "/clear", "/compact", "Login interrupted", "Caveat:",
+             "The command below", "The user sent", "The user opened", "The user", "<command",
+             "This is how Claude Code", "DO NOT respond", "Do NOT respond",
+             "<local-command", "The following", "Your task is", "[Request interrupted",
+             "Your response above", "Resume directly", "Continue the conversation",
+             "The assistant", "System:", "<system")
+_ACT_SKIP_SUB = ("was run directly in Claude Code", "not sent to you as a request",
+                 "surfaces messages the user sends", "<command-name>", "<command-message>",
+                 "cut off mid-stream", "ran out of context", "no apology, no recap")
+
+
+def _act_is_prompt(t):
+    if len(t) < 2 or _ACT_HASHTOOL.match(t):
+        return False
+    if t.startswith(_ACT_SKIP):
+        return False
+    for s in _ACT_SKIP_SUB:
+        if s in t:
+            return False
+    if re.match(r"^[0-9a-f/_.\-]{20,}$", t):
+        return False
+    return True
+
+
+def _act_verb(name, inp):
+    inp = inp or {}
+    b = os.path.basename
+    if name == "Edit":
+        return "edit", b(inp.get("file_path", ""))
+    if name == "Write":
+        return "write", b(inp.get("file_path", ""))
+    if name == "Read":
+        return "read", b(inp.get("file_path", ""))
+    if name == "Bash":
+        return "run", (inp.get("description") or inp.get("command", "")).strip()[:52]
+    if name.startswith(("mcp__Claude_Browser", "mcp__claude-in-chrome")):
+        return "browser", ""
+    if name.startswith("mcp__"):
+        return "tool", name.split("__")[-1]
+    return "tool", name
+
+
+def _edit_delta(name, inp):
+    # Real added/removed line counts from the tool input (no secrets, just counts).
+    inp = inp or {}
+    if name == "Write":
+        c = inp.get("content", "")
+        return (c.count("\n") + (1 if c else 0), 0)
+    if name == "Edit":
+        ns, os_ = inp.get("new_string", ""), inp.get("old_string", "")
+        la = ns.count("\n") + (1 if ns else 0)
+        lr = os_.count("\n") + (1 if os_ else 0)
+        return (la, lr)
+    return (0, 0)
+
+
+def _scan_activity_file(fp):
+    prompts, actions, changes = [], [], []
+    files = {}            # basename -> [added, removed, edits]
+    last = None
+    title = None
+    cwd = None
+    try:
+        with open(fp, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                try:
+                    o = json.loads(line)
+                except Exception:
+                    continue
+                if o.get("cwd"):
+                    cwd = o["cwd"]
+                if o.get("customTitle"):
+                    title = o["customTitle"]
+                ts = o.get("timestamp")
+                if ts:
+                    last = ts
+                m = o.get("message")
+                if not isinstance(m, dict):
+                    continue
+                if o.get("type") == "user" and m.get("role") == "user" and isinstance(m.get("content"), str):
+                    t = _act_clean(m["content"])
+                    if _act_is_prompt(t):
+                        prompts.append((ts, t[:80]))
+                elif o.get("type") == "assistant" and isinstance(m.get("content"), list):
+                    for blk in m["content"]:
+                        if isinstance(blk, dict) and blk.get("type") == "tool_use":
+                            nm = blk.get("name")
+                            inp = blk.get("input")
+                            v, tgt = _act_verb(nm, inp)
+                            actions.append((ts, v, tgt))
+                            if nm in ("Edit", "Write"):
+                                fn = os.path.basename((inp or {}).get("file_path", "")) or "?"
+                                la, lr = _edit_delta(nm, inp)
+                                rec = files.setdefault(fn, [0, 0, 0])
+                                rec[0] += la; rec[1] += lr; rec[2] += 1
+                                changes.append((ts, fn, la, lr))
+    except Exception:
+        pass
+    return {"last": last, "title": title, "cwd": cwd,
+            "prompts": prompts[-6:], "actions": actions[-14:],
+            "nPrompts": len(prompts), "nActions": len(actions),
+            "files": files, "changes": changes[-18:]}
+
+
+def _act_label(cwd):
+    if not cwd:
+        return "?"
+    return os.path.basename(cwd.rstrip("/")) or cwd
+
+
+def claude_activity():
+    sessions = []
+    if os.path.isdir(CLAUDE_PROJECTS):
+        for fp in _glob.glob(os.path.join(CLAUDE_PROJECTS, "*", "*.jsonl")):
+            try:
+                mt = os.path.getmtime(fp)
+            except OSError:
+                continue
+            c = _activity_cache.get(fp)
+            if not c or c[0] != mt:
+                c = (mt, _scan_activity_file(fp))
+                _activity_cache[fp] = c
+            s = c[1]
+            if not s["last"]:
+                continue
+            proj = _act_label(s["cwd"])
+            topics = [t for _, t in s["prompts"][-3:]] if _ACT_SHOW_TOPICS else []
+            fdict = s.get("files", {})
+            flist = sorted(([fn] + rec for fn, rec in fdict.items()),
+                           key=lambda r: -(r[1] + r[2]))
+            top_files = [{"f": r[0], "add": r[1], "rem": r[2], "n": r[3]} for r in flist[:6]]
+            lines_added = sum(r[1] for r in flist)
+            lines_removed = sum(r[2] for r in flist)
+            sessions.append({
+                "title": s["title"] or proj, "proj": proj, "cwd": s["cwd"],
+                "last": s["last"], "nActions": s["nActions"], "nPrompts": s["nPrompts"],
+                "topic": topics[-1] if topics else "", "topics": topics,
+                "actions": [{"ts": ts, "v": v, "t": tgt} for ts, v, tgt in s["actions"]],
+                "files": top_files, "nFiles": len(fdict),
+                "linesAdded": lines_added, "linesRemoved": lines_removed,
+                "changes": [{"ts": ts, "f": fn, "add": la, "rem": lr} for ts, fn, la, lr in s.get("changes", [])],
+            })
+    sessions.sort(key=lambda s: s["last"], reverse=True)
+    feed = []
+    for s in sessions:
+        for a in s["actions"]:
+            feed.append((a["ts"], s["proj"], a["v"], a["t"]))
+    feed.sort(reverse=True)
+    feed = [{"ts": ts, "proj": p, "v": v, "t": t} for ts, p, v, t in feed[:16]]
+    # global file-change stream (newest-first) — the "+144" view, real line counts
+    chg = []
+    for s in sessions:
+        for c in s.get("changes", []):
+            chg.append((c["ts"], s["proj"], c["f"], c["add"], c["rem"]))
+    chg.sort(reverse=True)
+    changes = [{"ts": ts, "proj": p, "f": f, "add": a, "rem": r} for ts, p, f, a, r in chg[:24]]
+    return {"sessions": sessions[:8], "feed": feed, "changes": changes,
+            "showTopics": bool(_ACT_SHOW_TOPICS),
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 
@@ -706,6 +936,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/claude-usage":
             try:
                 return self._send(200, json.dumps(claude_usage(), ensure_ascii=False), "application/json; charset=utf-8")
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if u.path == "/api/activity":
+            try:
+                return self._send(200, json.dumps(claude_activity(), ensure_ascii=False), "application/json; charset=utf-8")
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/my-projects":
