@@ -51,12 +51,13 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .hud::before{left:7px;top:7px;border-right:0;border-bottom:0}.hud::after{right:7px;bottom:7px;border-left:0;border-top:0}
 .hud h2{margin:0 0 14px;font-size:14px;color:var(--cy);letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:9px;text-shadow:var(--glow)}
 .hud h2 .sec{color:var(--mut2);font-family:'Share Tech Mono',monospace;margin-left:auto;font-size:11px}.hud h2::before{content:"▸";color:var(--cy)}
-.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-.brand{display:flex;align-items:center;gap:15px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:nowrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:15px;min-width:0;flex:0 1 auto}
 .reticle{width:46px;height:46px;position:relative;flex:0 0 auto}.reticle::before{content:"";position:absolute;inset:0;border:2px solid var(--cy);border-radius:50%;filter:drop-shadow(var(--glow))}.reticle::after{content:"";position:absolute;inset:8px;border:1.5px dashed var(--cy2);border-radius:50%;animation:spin 8s linear infinite}
 .reticle i{position:absolute;left:50%;top:50%;width:6px;height:6px;background:var(--cy);border-radius:50%;transform:translate(-50%,-50%);box-shadow:var(--glow)}
 .brand h1{margin:0;font-size:26px;color:#eafcff;text-shadow:var(--glow)}.brand .sub{font-size:12px;color:var(--cy);letter-spacing:.24em;margin-top:3px}
-.rbar{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.rbar{display:flex;align-items:center;gap:11px;flex-wrap:nowrap;flex:0 0 auto}
+.brand h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--cy);background:rgba(10,28,44,.85);border:1.5px solid var(--line2);padding:10px 16px;cursor:pointer;letter-spacing:.05em;clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px));box-shadow:0 0 14px rgba(120,200,255,.2);transition:.15s}
 .btn:hover{filter:brightness(1.3)}.btn:active{transform:scale(.97)}.btn.busy{color:var(--amber);border-color:rgba(255,210,74,.5)}
 .sbtn{font-family:'Share Tech Mono';font-size:12px;color:var(--mut);background:transparent;border:1px solid var(--line);padding:8px 11px;cursor:pointer}.sbtn:hover{color:var(--cy);border-color:var(--line2)}
@@ -282,7 +283,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 /* fixed-width header controls (no layout shift across languages) */
 .rbar .sbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 #langbtn{width:66px}#themebtn{width:118px}#ovbtn{width:120px}
-.tele{min-width:96px}.clock{min-width:168px;text-align:right}
+.tele{min-width:0;white-space:nowrap}.clock{min-width:0;text-align:right;white-space:nowrap}
 /* bigger refresh + LIVE */
 #refresh{font-size:18px;padding:13px 10px;font-weight:700;letter-spacing:.08em;width:124px;text-align:center}
 .tele{font-size:14px}.tele b.blink{font-size:17px}
@@ -358,9 +359,17 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .eb-row{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.3;padding:2px 0}
 .eb-row .ic{flex:0 0 auto;font-size:11.5px;width:16px;text-align:center}
 .eb-row .lb{color:var(--mut2);flex:0 0 54px;font-size:11px}
-.eb-row .vl{color:#eaf6ff;min-width:0;overflow:hidden}
+.eb-row .vl{color:#eaf6ff;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .eb-row.warn .vl{color:#ffc4cf}
 .eb-row .vl .q{color:var(--mut);font-size:11px}
+/* brief card scrolling feed — latest pinned, older dev items rise (different speed per card) */
+.ebc-feed{margin-top:6px;border-top:1px solid rgba(120,200,255,.08);padding-top:5px;font-family:'Share Tech Mono';font-size:10.5px}
+.ebc-feed .efwin{height:30px;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent)}
+.ebc-feed .eftrack{will-change:transform}
+.ebc-feed .efi{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mut2);line-height:1.75}
+.ebc-feed .efi.new{color:#2bffb0}
+.ebc-feed .efi .ew{color:var(--mut);font-size:9.5px;margin-left:6px}
+@keyframes vmarq{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
 /* per-session changed files (real +/- line counts) */
 .wkc-files{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
@@ -714,7 +723,8 @@ function renderBrief(){
   const t=REP.totals||{},O=lastO.totals||{};
   const warnP=(REP.projects||[]).filter(p=>(p.risks||[]).some(r=>r.level==='high')).map(p=>p.name);
   const sum=`<div class="eb-sum">${ko?'프로젝트':'Projects'} <b>${(REP.projects||[]).length}</b>${ko?'개 ·':' ·'} ${tr('eb_featdone')} <b>${O.featProgress==null?'—':O.featProgress+'%'}</b> ${ko?'완료 ·':'done ·'} ${tr('eb_week')} <b>${t.commits7d||0}</b>${ko?'건':''} ${ko?'· 주의':'· risks'} <b class="${(t.risks||0)?'hi':''}">${t.risks||0}</b>${warnP.length?` <span class="hi">▲ ${tr('eb_attn')}: ${warnP.map(esc).join(', ')}</span>`:` <span style="color:#2bffb0">· ${tr('eb_ok')}</span>`}</div>`;
-  const cards=(REP.projects||[]).map(p=>{
+  const DURS=[13,9,17,11,15];   // different scroll speed per card
+  const cards=(REP.projects||[]).map((p,idx)=>{
     const wip=((p.features&&p.features.wip)||[]);
     const rk=(p.risks||[]);const hasHigh=rk.some(r=>r.level==='high');
     const nx=(p.next||[]).slice(0,3).map(n=>esc(n.t));
@@ -724,7 +734,15 @@ function renderBrief(){
     const rkMore=rk.length>3?` <span class="q">…+${rk.length-3}</span>`:'';
     const blockRow=`<div class="eb-row warn"><span class="ic">${hasHigh?'🔴':(rk.length?'⚠️':'🟢')}</span><span class="lb">${tr('eb_blocked')}</span><span class="vl">${rk.length?rkShow+rkMore:'<span style="color:#2bffb0">'+tr('eb_ok')+'</span>'}</span></div>`;
     const nextRow=nx.length?`<div class="eb-row"><span class="ic">➡️</span><span class="lb">${tr('eb_next')}</span><span class="vl">${nx.join(', ')}</span></div>`:'';
-    return `<div class="ebc${hasHigh?' warn':''}"><div class="ebc-n">${esc(p.name)}<span class="pc">${p.featProgress==null?'—':p.featProgress+'%'}</span></div>${builtRow}${buildRow}${blockRow}${nextRow}</div>`;
+    // scrolling dev feed: recent commits rise bottom→up, newest green, per-card speed
+    const cm=(p.commits||[]).slice(0,8);
+    let feed='';
+    if(cm.length){
+      const items=cm.map((c,i)=>`<div class="efi${i===0?' new':''}">${esc(c.msg)}<span class="ew">${esc(c.when)}</span></div>`).join('');
+      const dur=DURS[idx%DURS.length];
+      feed=`<div class="ebc-feed"><div class="efwin"><div class="eftrack" style="animation:vmarq ${dur}s linear infinite">${items}${items}</div></div></div>`;
+    }
+    return `<div class="ebc${hasHigh?' warn':''}"><div class="ebc-n">${esc(p.name)}<span class="pc">${p.featProgress==null?'—':p.featProgress+'%'}</span></div>${builtRow}${buildRow}${blockRow}${nextRow}${feed}</div>`;
   }).join('');
   box.innerHTML=sum+cards;
 }
