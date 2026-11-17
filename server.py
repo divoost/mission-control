@@ -511,10 +511,15 @@ def overview_item(proj):
     cnt = collections.Counter(raw.splitlines())
     today = datetime.date.today()
     spark = [cnt.get((today - datetime.timedelta(days=i)).strftime("%Y-%m-%d"), 0) for i in range(6, -1, -1)]
+    # real feature-completion (planned features: done vs total) — distinct from the
+    # git-maturity `progress` estimate. None when no features are defined.
+    feat_total = fd + fw + ftd
+    feat_prog = round(fd / feat_total * 100) if feat_total else None
     return {
         "id": pid_of(proj), "name": proj.get("name"), "tagline": proj.get("tagline") or "",
         "theme": proj.get("theme") or CFG.get("theme", "cyan"),
         "commits": commits, "last": last, "progress": prog,
+        "featProgress": feat_prog, "featDone": fd, "featTotal": feat_total,
         "ms": {"done": done, "total": total},
         "feat": {"done": fd, "wip": fw, "todo": ftd},
         "agents": {"run": arun, "total": len(ags)},
@@ -556,8 +561,11 @@ def overview():
             l = sh(repo, ["git", "log", "-1", "--format=%cr"] + ps, timeout=8) or "-"
             tot_c += c
             others.append({"id": pid_of(p), "name": p["name"], "commits": c, "last": l})
+    feat_all = FD + FW + FT
     totals = {"projects": len(cfg_items), "repos": len(PROJECTS), "commits": tot_c,
               "avgProgress": round(prog_sum / prog_n) if prog_n else 0,
+              "featProgress": round(FD / feat_all * 100) if feat_all else None,
+              "featDone": FD, "featTotal": feat_all,
               "feat": {"done": FD, "wip": FW, "todo": FT}, "agentsRun": ARUN, "agentsTotal": AG_TOT,
               "db": DB, "files": FILES, "commits7d": C7, "inProgress": FW, "spark7": spark7}
     # real dev-artifact log lines (DB tables, module structure, screens, docs, stack) for the console stream
@@ -588,6 +596,79 @@ def overview():
             "devlog": devlog, "metricBreak": metric_break,
             "theme": CFG.get("theme", "cyan"),
             "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+
+# ---- auto dev report + next actions (real git/config signals only) ----
+_report_cache = {"ts": 0, "data": None}
+
+
+def project_report(proj):
+    repo = proj["repo"]
+    sub = proj.get("subpath")
+    ps = (["--", sub] if sub else [])
+    ref = resolve_ref(proj)
+    today_n = int(sh(repo, ["git", "rev-list", "--count", "--since=midnight", ref] + ps, timeout=8) or 0)
+    week_n = int(sh(repo, ["git", "rev-list", "--count", "--since=7.days", ref] + ps, timeout=8) or 0)
+    commits = []
+    for x in sh(repo, ["git", "log", ref, "--since=7.days", "--pretty=%h\x1f%s\x1f%cr", "-15"] + ps, timeout=8).splitlines():
+        parts = x.split("\x1f")
+        if len(parts) >= 3:
+            commits.append({"sha": parts[0], "msg": parts[1][:80], "when": parts[2]})
+    # files changed in the last 7 days (real)
+    fch = collections.Counter()
+    for l in sh(repo, ["git", "log", ref, "--since=7.days", "--name-only", "--pretty=format:"] + ps, timeout=8).splitlines():
+        l = l.strip()
+        if l:
+            fch[l] += 1
+    files_changed = [{"f": os.path.basename(k), "path": k, "n": v} for k, v in fch.most_common(8)]
+    # open TODO/FIXME with location (real)
+    todos = []
+    for l in sh(repo, ["bash", "-lc", "git grep -n -I -E '(TODO|FIXME|HACK)' 2>/dev/null | head -14"], timeout=8).splitlines():
+        parts = l.split(":", 2)
+        if len(parts) >= 3:
+            todos.append({"file": os.path.basename(parts[0]), "line": parts[1], "txt": parts[2].strip()[:70]})
+    feats = proj.get("features") or []
+    f_wip = [f.get("n") for f in feats if f.get("s") == "wip"]
+    f_todo = [f.get("n") for f in feats if f.get("s") == "todo"]
+    f_done = [f.get("n") for f in feats if f.get("s") == "done"]
+    ms = proj.get("milestones") or []
+    ms_open = [m.get("name") for m in ms if not m.get("done")]
+    # next actions — surfaced ONLY from real signals, never invented
+    nxt = []
+    for n in f_wip:
+        nxt.append({"t": n, "why": "진행 중인 기능 마무리", "k": "wip"})
+    for n in f_todo[:4]:
+        nxt.append({"t": n, "why": "계획된 미착수 기능", "k": "todo"})
+    for td in todos[:4]:
+        nxt.append({"t": td["txt"], "why": "코드 내 TODO · %s:%s" % (td["file"], td["line"]), "k": "code"})
+    for n in ms_open[:2]:
+        nxt.append({"t": n, "why": "미완료 마일스톤", "k": "ms"})
+    ft = len(feats)
+    return {
+        "id": pid_of(proj), "name": proj.get("name"),
+        "commitsToday": today_n, "commits7d": week_n, "commits": commits[:8],
+        "filesChanged": files_changed, "todos": todos[:10], "todoCount": len(todos),
+        "features": {"done": f_done, "wip": f_wip, "todo": f_todo},
+        "featProgress": round(len(f_done) / ft * 100) if ft else None,
+        "milestonesOpen": ms_open, "next": nxt[:8],
+    }
+
+
+def report():
+    now = time.time()
+    if _report_cache["data"] and now - _report_cache["ts"] < 120:
+        return _report_cache["data"]
+    items = [project_report(p) for p in PROJECTS if p.get("configured")]
+    tot_today = sum(i["commitsToday"] for i in items)
+    tot_week = sum(i["commits7d"] for i in items)
+    tot_todo = sum(i["todoCount"] for i in items)
+    out = {"projects": items,
+           "totals": {"commitsToday": tot_today, "commits7d": tot_week, "openTodos": tot_todo,
+                      "nextCount": sum(len(i["next"]) for i in items)},
+           "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+           "day": datetime.date.today().strftime("%Y-%m-%d")}
+    _report_cache.update(ts=now, data=out)
+    return out
 
 
 # ---- real Claude Code usage (local session logs, token counts) ----
@@ -801,9 +882,20 @@ def claude_activity():
             top_files = [{"f": r[0], "add": r[1], "rem": r[2], "n": r[3]} for r in flist[:6]]
             lines_added = sum(r[1] for r in flist)
             lines_removed = sum(r[2] for r in flist)
+            # estimated session state (by recency of last logged event — labeled as inferred)
+            state = "idle"
+            try:
+                age = time.time() - datetime.datetime.fromisoformat(s["last"].replace("Z", "+00:00")).timestamp()
+                if age < 180:
+                    state = "active"
+                elif age < 1800:
+                    state = "recent"
+            except Exception:
+                age = None
             sessions.append({
                 "title": s["title"] or proj, "proj": proj, "cwd": s["cwd"],
                 "last": s["last"], "nActions": s["nActions"], "nPrompts": s["nPrompts"],
+                "state": state,
                 "topic": topics[-1] if topics else "", "topics": topics,
                 "actions": [{"ts": ts, "v": v, "t": tgt} for ts, v, tgt in s["actions"]],
                 "files": top_files, "nFiles": len(fdict),
@@ -926,6 +1018,11 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps(overview(), ensure_ascii=False), "application/json; charset=utf-8")
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}), "application/json")
+        if u.path == "/api/report":
+            try:
+                return self._send(200, json.dumps(report(), ensure_ascii=False), "application/json; charset=utf-8")
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}), "application/json")
         if u.path == "/api/api-usage":
