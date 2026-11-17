@@ -644,6 +644,29 @@ def project_report(proj):
     for n in ms_open[:2]:
         nxt.append({"t": n, "why": "미완료 마일스톤", "k": "ms"})
     ft = len(feats)
+    # ---- risk detection (real git/config signals only; never invented) ----
+    ct = sh(repo, ["git", "log", "-1", "--format=%ct", ref] + ps, timeout=8).strip()
+    days_since = int((time.time() - int(ct)) / 86400) if ct.isdigit() else None
+    reverts = int(sh(repo, ["bash", "-lc", "git log --since=7.days -i --grep=revert --oneline 2>/dev/null | wc -l | tr -d ' '"], timeout=8) or 0)
+    allfiles = [x for x in sh(repo, ["git", "ls-files"] + ps, timeout=8).splitlines() if x]
+    has_tests = any(re.search(r"(^|/)(tests?|__tests__|spec)/|\.(test|spec)\.[a-zA-Z]+$", f) for f in allfiles)
+    risks = []
+    if f_wip and days_since is not None and days_since >= 7:
+        risks.append({"level": "high", "kind": "stale",
+                      "msg": "장기 정체 · 진행중 기능 %d개" % len(f_wip), "ev": "마지막 커밋 %d일 전" % days_since})
+    if reverts:
+        risks.append({"level": "high" if reverts >= 3 else "med", "kind": "revert",
+                      "msg": "되돌림(revert) %d건" % reverts, "ev": "최근 7일 커밋"})
+    # churn hotspots — top 3 only, so other risk kinds stay visible
+    for fc in [f for f in files_changed if f["n"] >= 4][:3]:
+        risks.append({"level": "med", "kind": "churn", "msg": "잦은 수정: %s" % fc["f"], "ev": "7일간 %d회 변경" % fc["n"]})
+    if allfiles and not has_tests:
+        risks.append({"level": "med", "kind": "notest", "msg": "테스트 파일 없음", "ev": "test/spec 파일 미발견"})
+    if len(todos) >= 15:
+        risks.append({"level": "low", "kind": "todo", "msg": "열린 TODO %d개" % len(todos), "ev": "git grep TODO/FIXME"})
+    _lv = {"high": 0, "med": 1, "low": 2}
+    risks.sort(key=lambda r: _lv.get(r["level"], 3))
+    risks = risks[:6]
     return {
         "id": pid_of(proj), "name": proj.get("name"),
         "commitsToday": today_n, "commits7d": week_n, "commits": commits[:8],
@@ -651,6 +674,7 @@ def project_report(proj):
         "features": {"done": f_done, "wip": f_wip, "todo": f_todo},
         "featProgress": round(len(f_done) / ft * 100) if ft else None,
         "milestonesOpen": ms_open, "next": nxt[:8],
+        "risks": risks, "daysSinceCommit": days_since, "reverts": reverts, "hasTests": has_tests,
     }
 
 
@@ -662,9 +686,16 @@ def report():
     tot_today = sum(i["commitsToday"] for i in items)
     tot_week = sum(i["commits7d"] for i in items)
     tot_todo = sum(i["todoCount"] for i in items)
+    n_risk = sum(len(i.get("risks") or []) for i in items)
+    n_high = sum(1 for i in items for r in (i.get("risks") or []) if r.get("level") == "high")
+    try:
+        errs = claude_errors()
+    except Exception:
+        errs = 0
     out = {"projects": items,
            "totals": {"commitsToday": tot_today, "commits7d": tot_week, "openTodos": tot_todo,
-                      "nextCount": sum(len(i["next"]) for i in items)},
+                      "nextCount": sum(len(i["next"]) for i in items),
+                      "risks": n_risk, "risksHigh": n_high, "claudeErrors": errs},
            "asOf": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
            "day": datetime.date.today().strftime("%Y-%m-%d")}
     _report_cache.update(ts=now, data=out)
@@ -675,6 +706,29 @@ def report():
 import glob as _glob
 CLAUDE_PROJECTS = os.path.expanduser(os.environ.get("MC_CLAUDE_PROJECTS") or CFG.get("claudeProjectsDir") or "~/.claude/projects")
 _usage_cache = {}   # filepath -> (mtime, {in,out,cache,msgs,last})
+_errors_cache = {"ts": 0, "n": 0}
+
+
+def claude_errors():
+    """Count real error records (API errors / failed tool results) in recent local logs."""
+    now = time.time()
+    if now - _errors_cache["ts"] < 120:
+        return _errors_cache["n"]
+    n = 0
+    cutoff = now - 7 * 86400
+    if os.path.isdir(CLAUDE_PROJECTS):
+        for fp in _glob.glob(os.path.join(CLAUDE_PROJECTS, "*", "*.jsonl")):
+            try:
+                if os.path.getmtime(fp) < cutoff:
+                    continue
+                with open(fp, encoding="utf-8", errors="ignore") as fh:
+                    for line in fh:
+                        if '"isApiErrorMessage":true' in line or '"is_error":true' in line:
+                            n += 1
+            except Exception:
+                continue
+    _errors_cache.update(ts=now, n=n)
+    return n
 
 
 def _scan_usage_file(fp):
