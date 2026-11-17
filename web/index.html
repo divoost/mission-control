@@ -347,18 +347,18 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .ovsec.brief .ovband b{color:#eafcff}
 .ebcopy{margin-left:12px;font-family:inherit;font-size:12px;padding:5px 14px;border-radius:6px;border:1px solid var(--line2);background:rgba(103,247,255,.08);color:var(--cy);cursor:pointer;transition:.15s}
 .ebcopy:hover{background:rgba(103,247,255,.16)}
-.execbrief{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
-.eb-sum{grid-column:1/-1;font-size:15px;line-height:1.7;color:#dfeefc;background:linear-gradient(135deg,rgba(103,247,255,.07),rgba(8,22,38,.5));border:1px solid var(--line);border-left:4px solid var(--cy);border-radius:8px;padding:15px 18px;margin-bottom:2px}
+.execbrief{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.eb-sum{grid-column:1/-1;font-size:13px;line-height:1.35;color:#dfeefc;background:linear-gradient(135deg,rgba(103,247,255,.07),rgba(8,22,38,.5));border:1px solid var(--line);border-left:4px solid var(--cy);border-radius:7px;padding:8px 14px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .eb-sum b{color:#fff}.eb-sum .hi{color:#ff8da0;font-weight:700}
-.ebc{border:1px solid var(--line);border-radius:9px;background:rgba(8,22,38,.5);padding:15px 17px}
+.ebc{border:1px solid var(--line);border-radius:8px;background:rgba(8,22,38,.5);padding:9px 12px}
 .ebc.warn{border-left:4px solid #ff6b8a}
-.ebc-n{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:8px}
-.ebc-n .pc{margin-left:auto;font-size:14px;color:#2bffb0;font-family:'Share Tech Mono'}
+.ebc-n{font-size:13.5px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.ebc-n .pc{margin-left:auto;font-size:13px;color:#2bffb0;font-family:'Share Tech Mono'}
 .ebc-cap{font-size:11px;color:var(--mut);margin-bottom:11px}
-.eb-row{display:flex;gap:9px;align-items:baseline;font-size:13.5px;line-height:1.55;padding:5px 0}
-.eb-row .ic{flex:0 0 auto;font-size:14px;width:20px;text-align:center}
-.eb-row .lb{color:var(--mut2);flex:0 0 72px;font-size:12px}
-.eb-row .vl{color:#eaf6ff}
+.eb-row{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.3;padding:2px 0}
+.eb-row .ic{flex:0 0 auto;font-size:11.5px;width:16px;text-align:center}
+.eb-row .lb{color:var(--mut2);flex:0 0 54px;font-size:11px}
+.eb-row .vl{color:#eaf6ff;min-width:0;overflow:hidden}
 .eb-row.warn .vl{color:#ffc4cf}
 .eb-row .vl .q{color:var(--mut);font-size:11px}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
@@ -700,6 +700,15 @@ function briefText(){ // plain-text version for copy/send
   });
   return L.join('\n');
 }
+function briefRisk(r){const ko=(lang==='ko');
+  switch(r.kind){
+    case 'stale':return ko?`${r.n}일째 정체`:`stalled ${r.n}d`;
+    case 'churn':return `${r.f} ×${r.n}`;
+    case 'revert':return ko?`되돌림 ${r.n}건`:`${r.n} reverts`;
+    case 'notest':return ko?`테스트 없음`:`no tests`;
+    case 'todo':return ko?`TODO ${r.n}개`:`${r.n} TODOs`;
+    default:return r.msg||'';
+  }}
 function renderBrief(){
   const box=el('execbrief');if(!box||!REP||!lastO)return;const ko=(lang==='ko');
   const t=REP.totals||{},O=lastO.totals||{};
@@ -711,7 +720,9 @@ function renderBrief(){
     const nx=(p.next||[]).slice(0,3).map(n=>esc(n.t));
     const builtRow=`<div class="eb-row"><span class="ic">✅</span><span class="lb">${tr('eb_built')}</span><span class="vl">${ko?'계획 기능':'features'} <b>${(p.features.done||[]).length}/${((p.features.done||[]).length+(p.features.wip||[]).length+(p.features.todo||[]).length)||'—'}</b> ${ko?'· 이번 주 작업':'· updates'} ${p.commits7d}${ko?'건':''}</span></div>`;
     const buildRow=wip.length?`<div class="eb-row"><span class="ic">🔨</span><span class="lb">${tr('eb_building')}</span><span class="vl">${wip.map(esc).join(', ')}</span></div>`:'';
-    const blockRow=`<div class="eb-row warn"><span class="ic">${hasHigh?'🔴':(rk.length?'⚠️':'🟢')}</span><span class="lb">${tr('eb_blocked')}</span><span class="vl">${rk.length?rk.map(plainRisk).map(esc).join('<br>'):'<span style="color:#2bffb0">'+tr('eb_ok')+'</span>'}</span></div>`;
+    const rkShow=rk.slice(0,3).map(briefRisk).map(esc).join(' · ');
+    const rkMore=rk.length>3?` <span class="q">…+${rk.length-3}</span>`:'';
+    const blockRow=`<div class="eb-row warn"><span class="ic">${hasHigh?'🔴':(rk.length?'⚠️':'🟢')}</span><span class="lb">${tr('eb_blocked')}</span><span class="vl">${rk.length?rkShow+rkMore:'<span style="color:#2bffb0">'+tr('eb_ok')+'</span>'}</span></div>`;
     const nextRow=nx.length?`<div class="eb-row"><span class="ic">➡️</span><span class="lb">${tr('eb_next')}</span><span class="vl">${nx.join(', ')}</span></div>`:'';
     return `<div class="ebc${hasHigh?' warn':''}"><div class="ebc-n">${esc(p.name)}<span class="pc">${p.featProgress==null?'—':p.featProgress+'%'}</span></div>${builtRow}${buildRow}${blockRow}${nextRow}</div>`;
   }).join('');
