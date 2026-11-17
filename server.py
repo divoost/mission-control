@@ -446,7 +446,9 @@ def projects_list():
         tot += c
         items.append({"id": pid_of(p), "name": p["name"], "branch": p.get("branch") or "",
                       "configured": p.get("configured", False), "commits": c})
-    return {"projects": items, "totals": {"projects": len(items), "commits": tot}}
+    scanned = [expand(d) for d in (CFG.get("scanDirs", DEFAULT_SCAN) or [])]
+    return {"projects": items, "totals": {"projects": len(items), "commits": tot},
+            "scanDirs": scanned}
 
 
 def overview_item(proj):
