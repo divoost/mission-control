@@ -652,18 +652,21 @@ def project_report(proj):
     has_tests = any(re.search(r"(^|/)(tests?|__tests__|spec)/|\.(test|spec)\.[a-zA-Z]+$", f) for f in allfiles)
     risks = []
     if f_wip and days_since is not None and days_since >= 7:
-        risks.append({"level": "high", "kind": "stale",
+        risks.append({"level": "high", "kind": "stale", "n": days_since, "wip": len(f_wip),
                       "msg": "장기 정체 · 진행중 기능 %d개" % len(f_wip), "ev": "마지막 커밋 %d일 전" % days_since})
     if reverts:
-        risks.append({"level": "high" if reverts >= 3 else "med", "kind": "revert",
+        risks.append({"level": "high" if reverts >= 3 else "med", "kind": "revert", "n": reverts,
                       "msg": "되돌림(revert) %d건" % reverts, "ev": "최근 7일 커밋"})
     # churn hotspots — top 3 only, so other risk kinds stay visible
     for fc in [f for f in files_changed if f["n"] >= 4][:3]:
-        risks.append({"level": "med", "kind": "churn", "msg": "잦은 수정: %s" % fc["f"], "ev": "7일간 %d회 변경" % fc["n"]})
+        risks.append({"level": "med", "kind": "churn", "f": fc["f"], "n": fc["n"],
+                      "msg": "잦은 수정: %s" % fc["f"], "ev": "7일간 %d회 변경" % fc["n"]})
     if allfiles and not has_tests:
-        risks.append({"level": "med", "kind": "notest", "msg": "테스트 파일 없음", "ev": "test/spec 파일 미발견"})
+        risks.append({"level": "med", "kind": "notest",
+                      "msg": "테스트 파일 없음", "ev": "test/spec 파일 미발견"})
     if len(todos) >= 15:
-        risks.append({"level": "low", "kind": "todo", "msg": "열린 TODO %d개" % len(todos), "ev": "git grep TODO/FIXME"})
+        risks.append({"level": "low", "kind": "todo", "n": len(todos),
+                      "msg": "열린 TODO %d개" % len(todos), "ev": "git grep TODO/FIXME"})
     _lv = {"high": 0, "med": 1, "low": 2}
     risks.sort(key=lambda r: _lv.get(r["level"], 3))
     risks = risks[:6]
