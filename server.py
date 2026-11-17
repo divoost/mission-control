@@ -33,12 +33,14 @@ def expand(p):
     return os.path.abspath(os.path.expanduser(p or ""))
 
 
-def find_repos(base, maxdepth=SCAN_DEPTH):
+def find_repos(base, maxdepth=SCAN_DEPTH, deadline=None):
     base = expand(base)
     if not os.path.isdir(base):
         return []
     res, base_sep = [], base.rstrip(os.sep).count(os.sep)
     for root, dirs, _ in os.walk(base):
+        if deadline and time.time() > deadline:  # bound scan time on large home dirs
+            break
         depth = root.count(os.sep) - base_sep
         dirs[:] = [d for d in dirs if d not in EXCLUDE and not d.startswith(".")]
         if os.path.isdir(os.path.join(root, ".git")):
@@ -83,9 +85,12 @@ def discover_projects():
         item["configured"] = True
         projs.append(item)
     scan = CFG.get("scanDirs", DEFAULT_SCAN)
+    deadline = time.time() + float(CFG.get("scanBudget") or 6)  # total scan time budget (s)
     found = []
     for d in scan:
-        found.extend(find_repos(d))
+        if time.time() > deadline:
+            break
+        found.extend(find_repos(d, deadline=deadline))
     for repo in sorted(set(found), key=lambda r: os.path.basename(r).lower()):
         if (repo, "") in seen:
             continue
@@ -1207,6 +1212,35 @@ class H(BaseHTTPRequestHandler):
         pass
 
 
+def _git_ok():
+    try:
+        return subprocess.run(["git", "--version"], capture_output=True, timeout=5).returncode == 0
+    except Exception:
+        return False
+
+
 if __name__ == "__main__":
-    print(f"Mission Control — DevHUD on http://127.0.0.1:{PORT}  ({len(PROJECTS)} repos)", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
+    if not _git_ok():
+        print("⚠  'git' was not found on your PATH. Mission Control reads git repos — install git, then retry.\n"
+              "   macOS: xcode-select --install   ·   Ubuntu/Debian: sudo apt install git", flush=True)
+    # bind to the configured port; if busy, try the next few and tell the user clearly
+    srv, port = None, PORT
+    for p in range(PORT, PORT + 10):
+        try:
+            srv, port = ThreadingHTTPServer(("127.0.0.1", p), H), p
+            break
+        except OSError as e:
+            if e.errno in (48, 98, 10048):  # address already in use (mac/linux/win)
+                print(f"   port {p} is busy, trying {p + 1}…", flush=True)
+                continue
+            raise
+    if srv is None:
+        print(f"✖  ports {PORT}–{PORT + 9} are all in use. Set a free \"port\" in config.json and retry.", flush=True)
+        raise SystemExit(1)
+    print(f"Mission Control — DevHUD on http://127.0.0.1:{port}  ({len(PROJECTS)} repos)", flush=True)
+    if port != PORT:
+        print(f"   (configured port {PORT} was busy — using {port} instead)", flush=True)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\n   stopped.", flush=True)
