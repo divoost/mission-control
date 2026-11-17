@@ -12,11 +12,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_config():
-    for name in ("config.json", "config.sample.json"):
-        p = os.path.join(HERE, name)
-        if os.path.exists(p):
-            with open(p, encoding="utf-8") as fh:
-                return json.load(fh)
+    cands = []
+    if os.environ.get("MC_CONFIG"):           # explicit path (keep config outside the repo, or for tests)
+        cands.append(os.environ["MC_CONFIG"])
+    cands += [os.path.join(HERE, "config.json"), os.path.join(HERE, "config.sample.json")]
+    for p in cands:
+        if p and os.path.exists(p):
+            try:
+                with open(p, encoding="utf-8") as fh:
+                    return json.load(fh)
+            except Exception:
+                continue
     return {}
 
 
