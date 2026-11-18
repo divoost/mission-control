@@ -814,6 +814,7 @@ def _act_clean(txt):
         return ""
     txt = re.sub(r"<pasted_content[^>]*>.*?</pasted_content>", " ", txt, flags=re.S)
     txt = re.sub(r"<system-reminder>.*?</system-reminder>", " ", txt, flags=re.S)
+    txt = re.sub(r"\[Image:[^\]]*\]", " ", txt)          # harness image annotations
     txt = re.sub(r"<[^>]+>", " ", txt)
     return re.sub(r"\s+", " ", txt).strip()
 
@@ -824,10 +825,12 @@ _ACT_SKIP = ("Called the", "Result of", "This session is being continued",
              "This is how Claude Code", "DO NOT respond", "Do NOT respond",
              "<local-command", "The following", "Your task is", "[Request interrupted",
              "Your response above", "Resume directly", "Continue the conversation",
-             "The assistant", "System:", "<system")
+             "The assistant", "System:", "<system", "[Image", "[image", "Attachment",
+             "Note:", "data:image")
 _ACT_SKIP_SUB = ("was run directly in Claude Code", "not sent to you as a request",
                  "surfaces messages the user sends", "<command-name>", "<command-message>",
-                 "cut off mid-stream", "ran out of context", "no apology, no recap")
+                 "cut off mid-stream", "ran out of context", "no apology, no recap",
+                 "Multiply coordinates", "displayed at", "original 2880")
 
 
 def _act_is_prompt(t):
