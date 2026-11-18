@@ -346,6 +346,8 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .rk.high .nt{color:#ffd0d8}.rk .nt{color:#eaf6ff}.rk .nw{color:var(--mut);font-size:10px;font-family:'Share Tech Mono';margin-left:auto;white-space:nowrap}
 /* executive brief — plain language for non-devs (clean, readable) */
 .ovsec.brief .ovband b{color:#eafcff}
+.ovsublbl.ebhead{display:flex;align-items:center;gap:9px}
+.ovsublbl.ebhead .ebcopy{margin-left:auto}
 .ebcopy{margin-left:12px;font-family:inherit;font-size:12px;padding:5px 14px;border-radius:6px;border:1px solid var(--line2);background:rgba(103,247,255,.08);color:var(--cy);cursor:pointer;transition:.15s}
 .ebcopy:hover{background:rgba(103,247,255,.16)}
 .execbrief{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
@@ -479,12 +481,7 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
       </div>
     </div>
     <div id="overview" class="ovwrap" style="display:none">
-      <!-- SECTION 0 · Executive brief (plain language, for non-devs) -->
-      <section class="ovsec brief" id="briefSec">
-        <div class="ovband"><span class="bdot"></span><b data-t="eb_title">경영 요약 · 오늘의 개발</b><span class="ln"></span><button class="ebcopy" id="ebCopy" data-t="eb_copy">복사</button></div>
-        <div class="execbrief" id="execbrief"></div>
-      </section>
-      <!-- SECTION 1 · Claude Code (cyan) -->
+      <!-- SECTION 1 · Claude Code (cyan) — live cockpit first -->
       <section class="ovsec cc">
         <div class="ovband"><span class="bdot"></span><b data-t="ov_cc">CLAUDE CODE · DEV STATUS</b><span class="ln"></span><span class="ovlive" id="ovlive">● LIVE</span></div>
         <div class="marquee" id="marquee"><div class="mq-track" id="mqTrack"></div></div>
@@ -494,6 +491,9 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
           <div class="hud cp"><h2><span data-t="cp_metrics">개발 지표</span><span class="sec" id="cpdelta">LIVE</span></h2><div class="mrings" id="mrings"></div><div class="devlog" id="devlog"></div></div>
           <div class="hud cp"><h2><span data-t="cp_now">지금 진행중</span><span class="realbadge" id="cpLive"></span><span class="sec blink">● LIVE</span></h2><div class="eq" id="eq"></div><div class="cpwave" id="cpwave"></div><div class="ticker" id="ticker"></div></div>
         </div>
+        <!-- Executive brief (plain-language summary) — right under the live cockpit -->
+        <div class="ovsublbl ebhead" id="briefSec"><span data-t="eb_title">경영 요약 · 오늘의 개발</span> <span class="realbadge" data-t="cu_real">REAL · GIT</span><button class="ebcopy" id="ebCopy" data-t="eb_copy">복사</button></div>
+        <div class="execbrief" id="execbrief"></div>
         <div class="ovsublbl"><span data-t="wk_changes">파일 변경 · 실시간 스트림</span> <span class="realbadge" data-t="cu_real">REAL · LOCAL</span><span class="bpcount" id="crTot"></span></div>
         <div class="changeriver" id="changeriver"><div class="cr-track" id="crTrack"></div></div>
         <div class="ovsublbl"><span data-t="wk_title">지금 작업중 · Claude Code 세션</span> <span class="realbadge" data-t="cu_real">REAL · LOCAL</span></div>
